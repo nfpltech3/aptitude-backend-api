@@ -1,0 +1,34 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+requests
+python-dotenv
+jinja2
+python-multipart
+
+# client id 
+# 1000.ZQ01RP4N64VXJSTBVQWZ3MLNY82HHM
+
+# client secret
+# 8cc9f0e003541ee545040e0b75776f0f3b939f7b25
+
+https://accounts.zoho.in/oauth/v2/auth
+?scope=ZohoCreator.data.READ,ZohoCreator.data.CREATE,ZohoCreator.data.UPDATE
+&client_id=1000.ZQ01RP4N64VXJSTBVQWZ3MLNY82HHM
+&response_type=code
+&access_type=offline
+&prompt=consent
+&redirect_uri=http://localhost
+
+# grant token -
+# 1000.7b0707236b94a9ea082f7bc3ea5688fd.d1f86294d9d16e462804d4c44209e1c8
+
+curl -X POST https://accounts.zoho.in/oauth/v2/token ^
+-d grant_type=authorization_code ^
+-d client_id=1000.ZQ01RP4N64VXJSTBVQWZ3MLNY82HHM ^
+-d client_secret=8cc9f0e003541ee545040e0b75776f0f3b939f7b25 ^
+-d redirect_uri=http://localhost ^
+-d code=1000.7b0707236b94a9ea082f7bc3ea5688fd.d1f86294d9d16e462804d4c44209e1c8
+
+

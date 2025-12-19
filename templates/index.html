@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Candidate Assessment</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; color: #333; }
+        
+        /* --- STICKY HEADER --- */
+        #test-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.85); /* See-through */
+            backdrop-filter: blur(12px);           /* The Blur Effect */
+            -webkit-backdrop-filter: blur(12px);   /* Safari support */
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .topic-header {
+            margin-top: 50px;       /* Space before new section */
+            margin-bottom: 20px;    /* Space after header */
+            page-break-before: auto; /* Good for printing/PDFs */
+        }
+
+        .topic-header h3 {
+            color: #007bff;         /* Theme Blue */
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .topic-header hr {
+            border: 0;
+            height: 3px;
+            background: #e9ecef;    /* Light gray line */
+            width: 100%;
+        }
+
+        .timer-badge {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #d9534f;
+            background: #fdf2f2;
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #ebccd1;
+        }
+
+        .warning-badge {
+            display: none; /* Hidden by default */
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 1px solid #ffeeba;
+            font-weight: 500;
+            animation: pulse 2s infinite;
+        }
+
+        #progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: transparent;
+        }
+        #progress-bar {
+            height: 100%;
+            background: rgb(52, 168, 83);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 2px 8px rgba(78, 84, 200, 0.3);
+            border-radius: 40px;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* --- WELCOME SCREEN --- */
+        #welcome-screen {
+            max-width: 600px;
+            margin: 80px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background-color: #0056b3; }
+        .hidden { display: none !important; }
+
+        /* --- TEST INTERFACE --- */
+        #test-interface {
+            max-width: 800px;
+            margin: 20px auto;
+            padding-bottom: 80px;
+            transition: padding-bottom 0.2s;
+        }
+
+        .question-card {
+            background: white;
+            margin-bottom: 20px;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-left: 5px solid #007bff; /* Accent border */
+        }
+
+        .question-text {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        /* --- INPUTS --- */
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 4px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            transition: all 0.3s ease;
+            background-color: #fafafa;
+        }
+
+        textarea:focus {
+            background-color: #fff;
+            border-color: #007bff;
+            box-shadow: 0 10px 25px rgba(0, 123, 255, 0.1); /* Soft glowing shadow */
+            transform: translateY(-2px); /* Lifts the input up slightly */
+            outline: none;
+        }
+
+        textarea, input[type="text"] {
+            /* When we tell JS to scroll to 'start', this ensures it stops 
+            100px down from the top (leaving space for your Header) */
+            scroll-margin-top: 100px; 
+        }
+
+        .options label {
+            display: block;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border: 2px solid transparent; /* Invisible border to prevent jumping */
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Slight hover effect on MCQ options for better UX */
+        .options label:hover {
+            background-color: #e9ecef !important;
+            transform: translateX(5px);
+        }
+
+        .options input[type="radio"] { margin-right: 10px; }
+
+        .options label:has(input:checked) {
+            background-color: #e7f1ff;     /* Light Blue Background */
+            border-color: #007bff;         /* Blue Border */
+            transform: scale(1.02);        /* Slight Zoom Pop */
+        }
+
+        /* --- SUBMIT BUTTON --- */
+        .submit-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .submit-btn {
+            background-color: #28a745;
+            font-size: 14;
+            padding: 0px 24px;
+            font-weight: 500;
+            line-height: 36px;
+        }
+        .submit-btn:hover { background-color: #218838; }
+
+        /* --- MODAL --- */
+        #cheat-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999; /* 👈 THIS FIXES THE CLICK ISSUE */
+        }
+        .modal-content {
+            background: white;
+            color: #333;
+            max-width: 400px;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .content-blur {
+            filter: blur(8px);
+            -webkit-filter: blur(8px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                font-size: 16px; /* Prevents iOS zooming on input */
+            }
+            .question-card {
+                padding: 15px;
+            }
+            textarea {
+                font-size: 1rem;
+            }
+            /* Hide the timer text if screen is too small, keep just time */
+            #timer-display {
+                font-size: 1.2rem;
+            }
+            @keyframes gentle-pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.5; } /* Fades to 50% visibility */
+                100% { opacity: 1; }
+            }
+
+            .timer-critical {
+                color: #dc3545 !important; /* Force Red */
+                font-weight: 800 !important; /* Make it thicker */
+                animation: gentle-pulse 1s infinite ease-in-out; /* 1-second pulse */
+            }
+        }
+    </style>
+</head>
+<body>  
+    <div id="test-header">
+        <div class="timer-badge">
+            ⏳ Time Left: <span id="timer-display">Loading...</span>
+        </div>
+
+        <div id="progress-container"><div id="progress-bar"></div></div>
+        
+        <div id="warning-box" class="warning-badge">
+            ⚠️ Warning: Do not switch tabs! (<span id="warn-count">0</span>/3)
+        </div>
+    </div>
+
+    <div id="welcome-screen">
+        <h1 id="welcome-msg" style="color:#007bff; margin-bottom: 10px;">Welcome to the Assessment</h1>
+        <p style="color:#666; margin-top:0;">Please read the proctoring rules carefully.</p>
+        
+        <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+        
+        <div style="text-align:left; margin-bottom:30px; line-height:1.6; font-size: 15px;">
+            <div style="background:#fff3cd; color:#856404; padding:15px; border-left:5px solid #ffeeba; margin-bottom:20px; border-radius:4px;">
+                <h3 style="margin-top:0; color:#856404;">⚠️ STRICT PROCTORING ACTIVE</h3>
+                <p style="margin-bottom:0; font-weight:bold; color:#dc3545; font-size:18px; text-transform:uppercase;">
+                    TAB SWITCH AT YOUR OWN RISK.
+                </p>
+            </div>
+
+            <strong><u>Rules & Penalties:</u></strong>
+            <ul style="margin-top:5px; padding-left:20px;">
+                <li><b>No Tab Switching:</b> Leaving the test window triggers immediate warnings.</li>
+                <li><b>Time Penalty:</b> If you stay away from the test screen, you will receive <b>1 Warning for every 10 seconds</b> you are away.</li>
+                <li><b>Auto-Fail:</b> If you are away for more than <b>30 seconds</b>, the test will <b>Automatically Submit</b>.</li>
+                <li><b>Mobile Users:</b> Enable "Do Not Disturb". Incoming calls or notifications that block the screen for more than 4 seconds will be counted as a violation.</li>
+            </ul>
+
+            <p style="font-size:13px; color:#555;">
+                <i>* Your IP address, focus changes, and time-away duration are being monitored.</i>
+            </p>
+        </div>
+        
+        <p id="loading-msg" style="color:#666; font-style:italic;">Verifying your link...</p>
+        
+        <button id="start-btn" class="btn hidden" onclick="beginTest()">
+            I Understand & Start Assessment
+        </button>
+    </div>
+
+    <div id="test-interface" class="hidden">
+        <div id="questions-container"></div>
+        
+        <div class="submit-container">
+            <button class="btn submit-btn" onclick="submitTest()">Submit</button>
+        </div>
+    </div>
+
+    <div id="cheat-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6);">
+        <div class="modal-content" style="text-align: center;">
+            <h2 style="color:#dc3545; margin-top:0;">⚠️ TAB SWITCH DETECTED</h2>
+            <p style="font-size:16px; line-height:1.5;">
+                You moved away from the test window.<br>
+                Please stay on this page to continue.
+            </p>
+            <p style="color:#666; font-size:14px;">
+                <b>Warning <span id="warn-count-modal"></span> of 3</b><br>
+                (Next violation may auto-submit your test)
+            </p>
+            <button class="btn" onclick="closeWarning()" style="margin-top:15px; width:100%;">I Understand & Return</button>
+        </div>
+    </div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    let timerInterval = null;
+    let timeRemaining = 0;
+    let warningCount = parseInt(localStorage.getItem(`warnings_${token}`) || "0");
+    const MAX_WARNINGS = 3;
+    let isSubmitting = false;
+
+    // Tracking Variables
+    let lastViolationTime = 0;
+    let violationTimer = null;
+    let isRefreshing = false;
+
+    let annoyingBeepOscillator = null;
+    let audioCtx = null;
+
+    // --- 1. INITIALIZATION ---
+    async function init() {
+        // UI Setup
+        if(warningCount > 0) {
+            document.getElementById("warn-count").innerText = warningCount;
+            document.getElementById("warning-box").style.display = "block";
+        }
+
+        try {
+            const res = await fetch(`/api/check-token?token=${token}`);
+            const data = await res.json();
+
+            if (data.status === "Submitted" || data.status === "Auto-Submitted") {
+                document.body.innerHTML = "<h1 style='text-align:center; margin-top:50px;'>Test Already Submitted</h1>";
+                return;
+            }
+
+            if (!res.ok) {
+                document.getElementById('welcome-msg').innerText = "Error";
+                document.getElementById('loading-msg').innerText = data.detail || "Invalid Link";
+                return;
+            }
+
+            if (data.status === "Resuming") {
+                beginTest(); 
+            } else {
+                document.getElementById('welcome-msg').innerText = `Welcome, ${data.name}`;
+                document.getElementById('loading-msg').classList.add('hidden');
+                document.getElementById('start-btn').classList.remove('hidden');
+            }
+
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // --- 2. START TEST LOGIC ---
+    async function beginTest() {
+        try {
+            getAudioContext().resume();
+        } catch(e) { console.log("Audio init error", e); }
+
+        requestFullScreen();
+
+        const welcomeScreen = document.getElementById('welcome-screen');
+        if (welcomeScreen) welcomeScreen.innerHTML = "<h1>Setting up your test...</h1>";
+        
+        try {
+            const res = await fetch('/api/start-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+            
+            const data = await res.json();
+            
+            if (!res.ok) {
+                alert("Error: " + (data.detail || "Unknown error"));
+                return;
+            }
+
+            if (data.status === "Submitted") {
+                document.body.innerHTML = "<h1>Test Already Submitted</h1>";
+                return;
+            }
+
+            if (welcomeScreen) welcomeScreen.classList.add('hidden');
+            document.getElementById('test-interface').classList.remove('hidden');
+
+            timeRemaining = data.remaining_seconds;
+            updateTimerDisplay();
+            
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(countdown, 1000);
+
+            requestWakeLock();
+            setupProctoring();
+
+            renderQuestions(data.questions, data.saved_answers || {});
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to connect to server.");
+        }
+    }
+
+    function isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    function requestFullScreen() {
+        const docElm = document.documentElement;
+        // iOS Safari does not support requestFullscreen on elements. We skip it for them.
+        if (docElm.requestFullscreen) {
+            docElm.requestFullscreen().catch(() => {});
+        } else if (docElm.mozRequestFullScreen) { 
+            docElm.mozRequestFullScreen();
+        } else if (docElm.webkitRequestFullScreen) { 
+            docElm.webkitRequestFullScreen();
+        } 
+        // Note: We don't error out if it fails on mobile.
+    }
+
+    // --- 3. TIMER LOGIC ---
+    function countdown() {
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById("timer-display").innerText = "00:00";
+            autoSubmitTest("Time Expired");
+        } else {
+            timeRemaining--; 
+            updateTimerDisplay();
+        }
+    }
+
+    function updateTimerDisplay() {
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        const display = document.getElementById("timer-display");
+        display.innerText = `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+        if (timeRemaining <= 60) {
+            // Critical Mode (Last 60s)
+            display.classList.add('timer-critical');
+        }
+        else if (timeRemaining < 300) {
+            // Warning Mode (Last 5 mins)
+            display.classList.remove('timer-critical'); // Stop flickering if we added time back
+            display.style.color = "red";
+        } 
+        else {
+            // Normal Mode
+            display.classList.remove('timer-critical');
+            display.style.color = ""; // Reset to default
+        }
+    }
+
+    let violationCount = 0;
+    let lastVisibleTime = Date.now();
+    let blurTimer = null;
+
+    // --- 4. STRICT PROCTORING LOGIC ---
+    function setupProctoring() {
+        requestWakeLock();
+
+        let lastVisibleTime = Date.now();
+        let blurTimer = null;
+
+        // A. Tab Switch
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                // User is leaving/locking.
+                // Clear any pending blur warnings immediately (Fixes the Lock Screen bug)
+                if (blurTimer) clearTimeout(blurTimer);
+                lastVisibleTime = Date.now();
+                scheduleDelayedBeep();
+            } else {
+                stopBeep();
+                const timeAway = Date.now() - lastVisibleTime;
+                lastVisibleTime = Date.now();
+
+                if (timeAway > 30000) {
+                     alert("CRITICAL VIOLATION: You were away for " + Math.round(timeAway/1000) + "s.\n\nTest will now be Auto-Submitted.");
+                     submitTest(true); 
+                     
+                     return;
+                }
+
+                // 2. Calculate Penalty
+                if (timeAway < 5000) return; // < 5s is safe
+
+                // Calculate Penalties (1 warning per 10 seconds)
+                let warningsToGive = Math.floor(timeAway / 10000); 
+                if (warningsToGive === 0) warningsToGive = 1; // Minimum 1 warning
+
+                // Don't loop. Just call it ONCE with the quantity.
+                attemptViolation(`App Switch (${Math.round(timeAway/1000)}s)`, warningsToGive);
+            }
+        });
+
+        // B. Window Blur (Includes clicking outside)
+        window.addEventListener("blur", () => {
+             if (isSubmitting) return;
+
+             // Wait 4 seconds
+             blurTimer = setTimeout(() => {
+                 if (document.visibilityState === 'visible') {
+                     attemptViolation("Focus Lost / Overlay Detected");
+                 }
+             }, 4000);
+        });
+
+        // C. Full Screen Exit Detection
+        if (!isMobile()) {
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement && !isSubmitting && !isRefreshing) {
+                     attemptViolation("Exited Full Screen Mode");
+                }
+            });
+        }
+
+        // D. Detect Refresh/Close (The "Cancel Violation" Trigger)
+        window.addEventListener("beforeunload", () => {
+            isRefreshing = true;
+            if (violationTimer) clearTimeout(violationTimer);
+        });
+
+        // E. Block Keys
+        document.addEventListener("keydown", (e) => {
+            if(e.key === "F12") { e.preventDefault(); e.stopPropagation(); }
+            
+            if(e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "J" || e.key === "j" || e.key === "C" || e.key === "c")) {
+                e.preventDefault(); e.stopPropagation();
+            }
+            if(e.ctrlKey && (e.key === "U" || e.key === "u")) {
+                e.preventDefault(); e.stopPropagation();
+            }
+        });
+
+        // F. Block Interactions
+        window.addEventListener("focus", () => {
+            // If they come back quickly, cancel the pending strike
+            if (blurTimer) clearTimeout(blurTimer);
+        });
+
+        // G. Aggressive Focus Polling (Catches Google Assistant / Overlays)
+        setInterval(() => {
+            // Only check if page is visible AND has been visible for >3 seconds (Unlock grace period)
+            if (!isSubmitting && document.visibilityState === 'visible') {
+                const timeSinceVisible = Date.now() - lastVisibleTime;
+                if (timeSinceVisible < 3000) return;
+
+                if (!document.hasFocus()) {
+                    attemptViolation("System Overlay Detected");
+                }
+            }
+        }, 2000);
+
+        document.addEventListener("contextmenu", (e) => { e.preventDefault(); return false; });
+        document.addEventListener("copy", (e) => e.preventDefault());
+        document.addEventListener("paste", (e) => e.preventDefault());
+    }
+
+    function attemptViolation(reason, penaltyPoints = 1) {
+        // 1. Ignore if page is unloading (Refresh)
+        if (isRefreshing) return;
+
+        // 2. Ignore if Modal is open
+        const modal = document.getElementById("cheat-modal");
+        if (modal.style.display === "block") return;
+
+        // 3. Clear existing timer to reset the delay
+        if (violationTimer) clearTimeout(violationTimer);
+
+        // 4. DELAY CHECK: Wait 100ms to see if 'beforeunload' fires
+        violationTimer = setTimeout(() => {
+            playInstantBeep();
+
+            // Check Cooldown (2 seconds) - Prevents spamming your Server/Database
+            const now = Date.now();
+            if (now - lastViolationTime < 2000) return;
+            lastViolationTime = now;
+
+            handleViolation(reason, penaltyPoints);
+        }, 100);
+    }
+
+    async function handleViolation(reason, points) {
+        // Double check refreshing status inside the execution
+        if (isRefreshing) return;
+
+        warningCount = warningCount + points;
+        localStorage.setItem(`warnings_${token}`, warningCount);
+
+        // Update UI
+        document.getElementById("warn-count").innerText = warningCount;
+        document.getElementById("warn-count-modal").innerText = warningCount;
+        document.getElementById("warning-box").style.display = "block";
+
+        const serverReason = points > 1 ? `${reason} [x${points} Penalty]` : reason;
+        console.log(`Violation Total: ${warningCount}. Added: ${points}. Reason: ${reason}`);
+
+        fetch('/api/record-violation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: token, reason: reason })
+        }).catch(err => {});
+
+        // Check Max Limit
+        if (warningCount >= MAX_WARNINGS) {
+            autoSubmitTest(`Proctoring Violation: ${reason}`);
+        } else {
+            // Show Warning Modal
+            const modal = document.getElementById("cheat-modal");
+            modal.style.display = "block";
+            
+            // Update the text in the modal to explain why they got multiple warnings
+            const modalMsg = modal.querySelector("p");
+            if(points > 1) {
+                // Optional: Show specific message for severe penalty
+                // You might need to add an ID to the <p> tag in HTML to target it easily
+            }
+            
+            const btn = modal.querySelector("button");
+            if(btn) btn.focus();
+            
+            document.getElementById("test-interface").classList.add("content-blur");
+            document.getElementById("test-header").classList.add("content-blur");
+        }
+    }
+
+    function closeWarning() {
+        requestFullScreen();
+
+        const modal = document.getElementById("cheat-modal");
+        modal.style.display = "none";
+
+        // REMOVE BLUR
+        document.getElementById("test-interface").classList.remove("content-blur");
+        document.getElementById("test-header").classList.remove("content-blur");
+    }
+
+    // --- 5. SUBMISSION LOGIC ---
+    async function autoSubmitTest(reason) {
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        alert(`Test Submitting Automatically: ${reason}`);
+        submitTest(true);
+    }
+
+    // --- HELPER: KEEP SCREEN AWAKE ---
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                await navigator.wakeLock.request('screen');
+                console.log("Screen Wake Lock active.");
+                
+                // Re-apply lock if user comes back from a switch
+                document.addEventListener('visibilitychange', async () => {
+                    if (document.visibilityState === 'visible') {
+                        await navigator.wakeLock.request('screen');
+                    }
+                });
+            }
+        } catch (err) { console.warn("Wake Lock not supported/allowed"); }
+    }
+
+    function getAudioContext() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioCtx;
+    }
+
+    function scheduleDelayedBeep() {
+        // This schedules a beep to start 10 seconds in the future
+        // It works even if the tab is in the background (Audio Hardware timing)
+        try {
+            const ctx = getAudioContext();
+            if(ctx.state === 'suspended') ctx.resume();
+
+            annoyingBeepOscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            annoyingBeepOscillator.type = 'sawtooth'; 
+            annoyingBeepOscillator.frequency.value = 1000; // Annoying high pitch
+
+            // Volume: Loud
+            gain.gain.value = 0.5; 
+
+            annoyingBeepOscillator.connect(gain);
+            gain.connect(ctx.destination);
+
+            // 🛑 THE MAGIC: Start playing at 'Current Time + 10 seconds'
+            annoyingBeepOscillator.start(ctx.currentTime + 10);
+            
+        } catch (e) { console.error("Audio schedule failed", e); }
+    }
+
+    function stopBeep() {
+        try {
+            if (annoyingBeepOscillator) {
+                annoyingBeepOscillator.stop();
+                annoyingBeepOscillator.disconnect();
+                annoyingBeepOscillator = null;
+            }
+        } catch (e) {}
+    }
+
+    function playInstantBeep() {
+        // Used for immediate warnings
+        try {
+            const ctx = getAudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.frequency.value = 880;
+            gain.gain.value = 0.3;
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+        } catch(e) {}
+    }
+
+    async function submitTest(isAuto = false) {
+        if (!isAuto && !isSubmitting) {
+            if(!confirm("Are you sure you want to submit?")) return;
+            isSubmitting = true;
+        }
+
+        clearInterval(timerInterval);
+
+        document.getElementById("test-interface").classList.remove("content-blur");
+        
+        // EXIT Full screen on submit
+        if (document.exitFullscreen) document.exitFullscreen().catch(e => {});
+
+        document.body.innerHTML = "<h1>Submitting... Please wait.</h1>";
+        
+        // Remove warnings so they don't persist if test is retaken (optional)
+        localStorage.removeItem(`warnings_${token}`);
+
+        try {
+            await fetch('/submit-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+            
+            document.body.innerHTML = `
+                <div style='text-align:center; margin-top:50px; font-family:sans-serif;'>
+                    <h1 style='color:green;'>Test Submitted Successfully!</h1>
+                    <p>You can close this tab now.</p>
+                </div>`;
+                
+        } catch (err) {
+            console.error(err);
+            document.body.innerHTML = "<h1>Submission Error. Please contact Admin.</h1>";
+        }
+    }
+
+    // --- 6. RENDER LOGIC ---
+function renderQuestions(questions, savedAnswers) {
+    const container = document.getElementById('questions-container');
+    
+    let htmlContent = '';
+    let currentTopic = null;
+
+    questions.forEach((q, index) => {
+        const qIdStr = String(q.question_id);
+        const savedVal = savedAnswers[qIdStr];
+        
+        // --- A. INSERT HEADER IF TOPIC CHANGED ---
+        const thisTopic = q.topic || "General"; 
+        
+        if (thisTopic !== currentTopic) {
+            currentTopic = thisTopic;
+            htmlContent += `
+                <div class="topic-header">
+                    <h3>${currentTopic} Section</h3>
+                    <hr>
+                </div>`;
+        }
+
+        let inputHtml = '';
+        if (q.type === 'MCQ') {
+            inputHtml = `<div class="options">
+                ${q.options.map(opt => {
+                    const isChecked = (savedVal === opt) ? 'checked' : '';
+                    return `<label style="display:block; padding:10px; border:1px solid #eee; margin-bottom:5px; border-radius:4px; cursor:pointer; background:#fafafa;">
+                                <input type="radio" name="q_${q.question_id}" value="${opt}" 
+                                    onchange="saveAnswer('${q.question_id}', this.value)" 
+                                    ${isChecked}> ${opt}
+                            </label>`;
+                }).join('')}
+            </div>`;
+        } else {
+            const valText = savedVal || '';
+            inputHtml = `<textarea style="width:100%; height:80px; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;" 
+                            placeholder="Type your answer here..." 
+                            onblur="saveAnswer('${q.question_id}', this.value)">${valText}</textarea>`;
+        }
+        
+        htmlContent += `
+            <div class="question-card" style="background:white; border-left:5px solid #007bff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                <div class="question-text" style="margin-bottom:15px; font-size:1.1em; color:#333;">
+                    <strong>Q${index + 1}.</strong> ${q.text}
+                </div>
+                ${inputHtml}
+            </div>`;
+    });
+
+    container.innerHTML = htmlContent;
+}
+
+    async function saveAnswer(qid, val) {
+        updateProgress();
+        if(isSubmitting) return;
+        try {
+            await fetch('/save-answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token, question_id: qid.toString(), answer_text: val })
+            });
+        } catch(e) {}
+    }
+
+    function updateProgress() {
+        const totalQuestions = document.querySelectorAll('.question-card').length;
+        // Count how many radios are checked OR textareas have value
+        const answered = document.querySelectorAll('input[type="radio"]:checked').length + 
+                        Array.from(document.querySelectorAll('textarea')).filter(t => t.value.trim() !== '').length;
+        
+        const percent = (answered / totalQuestions) * 100;
+        document.getElementById('progress-bar').style.width = percent + "%";
+    }
+
+    let paddingResetTimer = null;
+    const container = document.getElementById('test-interface');
+
+    document.getElementById('questions-container').addEventListener('focusin', function(e) {
+        if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) {
+            
+            // 1. Add empty space at the bottom of the container
+            if (paddingResetTimer) clearTimeout(paddingResetTimer);
+            container.style.paddingBottom = '30vh'; 
+
+            // 2. Wait for keyboard to fully slide up (Android/iOS takes ~300ms)
+            setTimeout(() => {
+                const rect = e.target.getBoundingClientRect();
+                
+                // Calculate the actual visible height
+                const visibleHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                
+                // Logic: Is the Input's BOTTOM edge hidden behind the keyboard?
+                const isObscured = rect.bottom > visibleHeight;
+
+                if (isObscured) {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } 
+                // CASE B: It's not covered. Do NOTHING. (User stays exactly where they scrolled)
+                
+            }, 300);
+        }
+    });
+
+    document.getElementById('questions-container').addEventListener('focusout', function(e) {
+        if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) {
+            // Remove the buffer space when they leave
+            paddingResetTimer = setTimeout(() => {
+                container.style.paddingBottom = '80px';
+            }, 200);
+        }
+    });
+
+    init();
+</script>
+</body>
+</html>
