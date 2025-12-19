@@ -111,7 +111,7 @@ def record_violation(data: ViolationRequest, db: Session = Depends(get_db)):
 
 @app.post("/api/start-test")
 def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    token = data.get("token")
+    token = data.get("token", "").strip()
 
     # 1. Fetch Candidate
     alloc = fetch_candidate_by_token(token)
@@ -123,10 +123,10 @@ def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Sessio
         pos_data = alloc.get("Position_Applied")
         if isinstance(pos_data, dict):
             candidate_position_id = int(pos_data.get("ID", 0))
-            position_name = pos_data.get("display_value", "") # e.g. "Python Developer"
+            position_name = pos_data.get("display_value", "")
         else:
-            candidate_position_id = int(pos_data)
-            position_name = "Unknown" # Fallback
+            candidate_position_id = int(pos_data) if pos_data else 0
+            position_name = "Unknown"
         
         # Duration Logic
         zoho_duration = alloc.get("Test_Duration_Minutes")
@@ -150,10 +150,11 @@ def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Sessio
             duration_mins=duration_mins
         )
         
-        try:
-            background_tasks.add_task(mark_test_started, alloc["ID"])
-        except Exception as e:
-            print(f"Warning: Could not sync start time: {e}")
+        # disable to reduce api call
+        # try:
+        #     background_tasks.add_task(mark_test_started, alloc["ID"])
+        # except Exception as e:
+        #     print(f"Warning: Could not sync start time: {e}")
     
     # 4. Fetch Questions
     if not session.question_cache:
@@ -225,13 +226,11 @@ def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Sessio
         has_dept_test = alloc.get("Has_Department_Test")
         if has_dept_test == "Yes" or has_dept_test == True:
             dept_qs = []
+            c_pos = position_name.lower()
             
             for q in all_questions_clean:
                 if q["topic"] == "Departmental":
-
                     q_tag = q["sub_topic"].lower()
-                    c_pos = position_name.lower()
-                    
                     if (q_tag in c_pos) or (c_pos in q_tag):
                         dept_qs.append(q)
 
@@ -279,21 +278,12 @@ def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Sessio
 
     # Fetch Saved Answers (if any)
     saved_answers_query = db.query(models.Answer).filter(models.Answer.session_id == session.id).all()
-
-    # Convert to a simple dictionary: { "question_id": "answer_text" }
     saved_map = {str(a.question_id): a.answer_text for a in saved_answers_query}
-
-    safe_questions = []
-    if session.question_cache:
-        for q in session.question_cache:
-            q_copy = q.copy()
-            q_copy["question_id"] = str(q["question_id"])
-            safe_questions.append(q_copy)
 
     return {
         "end_time": session.end_time.isoformat(),
         "remaining_seconds": remaining_seconds,
-        "questions": safe_questions,
+        "questions": session.question_cache,
         "saved_answers": saved_map
     }
 
@@ -416,7 +406,7 @@ def perform_zoho_sync(candidate_id, score, status, end_time, answers):
             answers_list=answers
         )
         
-        # # B. Push Answers
+        # # B. Push Answers -> Disabled to save api calls
         # if answers:
         #     push_candidate_answers(candidate_id, answers)
         
