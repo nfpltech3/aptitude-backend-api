@@ -23,6 +23,8 @@ import os, json, random
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from asgiref.wsgi import WsgiToAsgi
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
 load_dotenv(ENV_PATH)
@@ -39,6 +41,10 @@ app.add_middleware(
     allow_methods=["*"],  # Allows GET, POST, etc.
     allow_headers=["*"],
 )
+
+
+# Create the WSGI adapter
+application = WsgiToAsgi(app)
 
 def get_db():
     db = SessionLocal()
