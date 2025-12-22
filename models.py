@@ -12,12 +12,16 @@ class TestSession(Base):
     id = Column(Integer, primary_key=True)
     token = Column(String, unique=True, index=True)
     candidate_id = Column(String)
+    candidate_name = Column(String)
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     status = Column(String)  # In-Progress / Submitted / Auto-Submitted
     submission_type = Column(String, nullable=True)
     total_score = Column(Integer, default=0)
     submitted_at = Column(DateTime, nullable=True)
+    duration_minutes = Column(Integer, default=40)
+    position_name = Column(String, nullable=True)
+    has_department_test = Column(String, default="No")
     
     question_cache = Column(JSON, nullable=True)
     grading_cache = Column(JSON, nullable=True)

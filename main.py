@@ -51,41 +51,85 @@ class ViolationRequest(BaseModel):
     token: str
     reason: str
 
+class CandidateWebhook(BaseModel):
+    token: str
+    zoho_id: str
+    name: str
+    duration: int
+    position: str
+    has_dept_test: str # "Yes" or "No"
+
 @app.get("/")
 def home():
     return "Backend running"
 
 @app.get("/api/check-token")
 def check_candidate_token(token: str, db: Session = Depends(get_db)):
-    """
-    Verifies the token without starting the timer.
-    Returns candidate name and instructions.
-    """
-    # Check if session already exists (Student is resuming)
-    existing_session = crud.get_session_by_token(db, token)
-    if existing_session:
-        if existing_session.status in ["Submitted", "Auto-Submitted"]:
-             # Return a specific status that the frontend understands
-             return {"status": "Submitted", "name": "Candidate"}
-        return {"status": "Resuming", "name": "Candidate"}
+    token = token.strip()
 
-    # If new, fetch from Zoho to validate
+    # 1. OPTIMIZED PATH (Check Local DB)
+    session = crud.get_session_by_token(db, token)
+    if session:
+        if session.status in ["Submitted", "Auto-Submitted"]:
+             return {"status": "Submitted", "name": session.candidate_name}
+        
+        if session.status == "In-Progress":
+             return {
+                 "status": "Resuming", 
+                 "name": session.candidate_name,
+                 "instructions": "Resuming test..."
+             }
+        
+        # If Allocated (New), allow entry
+        return {"status": "New", "name": session.candidate_name, "instructions": "..."}
+
+    # 2. FALLBACK PATH (Call Zoho if DB is empty/wiped)
+    print(f"⚠️ Session missing for {token}. Attempting Fallback Fetch...")
+    
     alloc = fetch_candidate_by_token(token)
     if not alloc:
         raise HTTPException(status_code=404, detail="Invalid token")
 
-    # Validate Status
     token_status = alloc.get("Token_Status") or alloc.get("Token_Status1") 
     if token_status and token_status != "Valid":
          raise HTTPException(status_code=403, detail="Token is Invalid")
 
-    # Get Name safely
+    # Extract Data
+    zoho_duration = alloc.get("Test_Duration_Minutes")
+    duration_mins = int(zoho_duration) if zoho_duration else 40
+
     name_data = alloc.get("Candidate_Name")
     candidate_name = name_data.get("display_value") if isinstance(name_data, dict) else name_data
+    # Safety fallback if name is somehow None
+    if not candidate_name: candidate_name = "Candidate"
+
+    # Position Logic
+    pos_data = alloc.get("Position_Applied")
+    position_name = "Unknown"
+    if isinstance(pos_data, dict):
+        if "display_value" in pos_data: position_name = pos_data["display_value"]
+        elif "Postion" in pos_data: position_name = pos_data["Postion"]
+        elif "Role_Name" in pos_data: position_name = pos_data["Role_Name"]
+    elif isinstance(pos_data, str):
+         if len(pos_data) < 20 and not pos_data.isdigit(): position_name = pos_data
+
+    raw_dept_flag = alloc.get("Has_Department_Test")
+    has_dept_test = "Yes" if (raw_dept_flag == "Yes" or raw_dept_flag is True) else "No"
+
+    # Save to DB (So next time we hit the Optimized Path)
+    crud.create_placeholder_session(
+        db, 
+        token=token, 
+        zoho_id=alloc["ID"], 
+        duration_mins=duration_mins,
+        position_name=position_name,
+        has_dept_test=has_dept_test,
+        candidate_name=candidate_name
+    )
 
     return {
         "status": "New", 
-        "name": candidate_name,
+        "name": candidate_name, # Return the name we just extracted
         "instructions": "Please do not refresh the page once started."
     }
 
@@ -110,53 +154,19 @@ def record_violation(data: ViolationRequest, db: Session = Depends(get_db)):
     return {"status": "logged"}
 
 @app.post("/api/start-test")
-def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def start_test_session(data: dict, db: Session = Depends(get_db)):
     token = data.get("token", "").strip()
 
-    # 1. Fetch Candidate
-    alloc = fetch_candidate_by_token(token)
-    if not alloc:
-        raise HTTPException(status_code=404, detail="Invalid token")
-    
-    # 2. Extract Details
-    try:
-        pos_data = alloc.get("Position_Applied")
-        if isinstance(pos_data, dict):
-            candidate_position_id = int(pos_data.get("ID", 0))
-            position_name = pos_data.get("display_value", "")
-        else:
-            candidate_position_id = int(pos_data) if pos_data else 0
-            position_name = "Unknown"
-        
-        # Duration Logic
-        zoho_duration = alloc.get("Test_Duration_Minutes")
-        if zoho_duration:
-             duration_mins = int(zoho_duration)
-        else:
-            duration_mins = 40
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Data Error")
-
-    # 3. Create Session (OR Fetch if exists)
+    # 1. Fetch Session from Local DB (Fast)
     session = crud.get_session_by_token(db, token)
-
     if not session:
-        # timer starts here
-        session = crud.create_session(
-            db, 
-            token=token, 
-            zoho_id=alloc["ID"], 
-            duration_mins=duration_mins
-        )
-        
-        # disable to reduce api call
-        # try:
-        #     background_tasks.add_task(mark_test_started, alloc["ID"])
-        # except Exception as e:
-        #     print(f"Warning: Could not sync start time: {e}")
+        raise HTTPException(status_code=404, detail="Session not found. Please reload.")
+
+    # 2. Activate Timer (If not already running)
+    if session.status == "Allocated":
+        crud.start_session_timer(db, session, session.duration_minutes)
     
-    # 4. Fetch Questions
+    # 3. Fetch Questions (from Cache)
     if not session.question_cache:
         raw_questions = fetch_all_zoho_questions()
         
@@ -192,12 +202,12 @@ def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Sessio
             ]
             
             # Handle Correct Answer Text
-            correct_code = q.get("Correct_Answer")
+            correct_code = str(q.get("Correct_Answer", "")).strip()
             correct_text = correct_code
-            if correct_code == "A": correct_text = opts[0]
-            elif correct_code == "B": correct_text = opts[1]
-            elif correct_code == "C": correct_text = opts[2]
-            elif correct_code == "D": correct_text = opts[3]
+            if correct_code == "A" and len(opts) > 0: correct_text = opts[0]
+            elif correct_code == "B" and len(opts) > 1: correct_text = opts[1]
+            elif correct_code == "C" and len(opts) > 2: correct_text = opts[2]
+            elif correct_code == "D" and len(opts) > 3: correct_text = opts[3]
 
             all_questions_clean.append({
                 "id": str(q.get("ID")),
@@ -223,17 +233,19 @@ def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Sessio
                 selected_questions.extend(random.sample(qs_in_topic, count))
 
         # -- Departmental Logic --
-        has_dept_test = alloc.get("Has_Department_Test")
-        if has_dept_test == "Yes" or has_dept_test == True:
+        if session.has_department_test == "Yes":
             dept_qs = []
-            c_pos = position_name.lower()
             
-            for q in all_questions_clean:
-                if q["topic"] == "Departmental":
-                    q_tag = q["sub_topic"].lower()
-                    if (q_tag in c_pos) or (c_pos in q_tag):
-                        dept_qs.append(q)
-
+            # Use saved position name
+            c_pos = (session.position_name or "").lower()
+            
+            if c_pos:
+                for q in all_questions_clean:
+                    if q["topic"] == "Departmental":
+                        q_tag = q["sub_topic"].lower()
+                        # Fuzzy match
+                        if (q_tag in c_pos) or (c_pos in q_tag):
+                            dept_qs.append(q)
             
             if len(dept_qs) <= 10:
                 selected_questions.extend(dept_qs)
@@ -271,8 +283,11 @@ def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Sessio
         session.grading_cache = grading_cache
         db.commit()
     
-    # 5. Calculate Remaining Time
+    # 4. Calculate Remaining Time
     now_ist = get_ist_time()
+    if not session.end_time:
+         # Fallback safety
+         crud.start_session_timer(db, session, 40)
     remaining_delta = session.end_time - now_ist
     remaining_seconds = max(0, int(remaining_delta.total_seconds()))
 
@@ -284,7 +299,9 @@ def start_test_session(data: dict, background_tasks: BackgroundTasks, db: Sessio
         "end_time": session.end_time.isoformat(),
         "remaining_seconds": remaining_seconds,
         "questions": session.question_cache,
-        "saved_answers": saved_map
+        "saved_answers": saved_map,
+        "candidate_name": session.candidate_name,
+        "candidate_id": session.candidate_id
     }
 
 @app.get("/start-test", response_class=HTMLResponse)
@@ -412,3 +429,20 @@ def perform_zoho_sync(candidate_id, score, status, end_time, answers):
         
     except Exception as e:
         print(f"CRITICAL: Background Sync Failed for {candidate_id}: {e}")
+
+@app.post("/api/webhook/add-candidate")
+def add_candidate_webhook(data: CandidateWebhook, db: Session = Depends(get_db)):
+    """
+    Zoho calls this immediately after adding a candidate.
+    We save them to DB so 'Check Token' doesn't need to call API later.
+    """
+    crud.create_placeholder_session(
+        db, 
+        token=data.token, 
+        zoho_id=data.zoho_id, 
+        duration_mins=data.duration,
+        position_name=data.position,
+        has_dept_test=data.has_dept_test,
+        candidate_name=data.name
+    )
+    return {"status": "success"}

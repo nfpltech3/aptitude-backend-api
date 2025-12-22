@@ -1,4 +1,5 @@
 # services/zoho_questions.py
+import json
 import requests
 import os
 import time
@@ -6,23 +7,23 @@ from services.zoho_auth import get_access_token, refresh_access_token
 
 BASE = "https://creator.zoho.in/api/v2"
 
-_QUESTIONS_CACHE = []
-_LAST_FETCH_TIME = 0
-CACHE_DURATION = 3600
+CACHE_FILE = "questions_cache.json"
+CACHE_DURATION = 86400 # 24 hours (Fetch once a day)
 
 def fetch_all_zoho_questions():
-    """
-    Fetches ALL active questions from Zoho.
-    Returns a raw list of dictionaries.
-    """
-    global _QUESTIONS_CACHE, _LAST_FETCH_TIME
+    # 1. Try Loading from File First
+    if os.path.exists(CACHE_FILE):
+        file_age = time.time() - os.path.getmtime(CACHE_FILE)
+        
+        if file_age < CACHE_DURATION:
+            # print("📂 Loading Questions from File (0 API Calls)")
+            try:
+                with open(CACHE_FILE, "r") as f:
+                    return json.load(f)
+            except:
+                pass # If file is corrupted, fetch fresh
 
     current_time = time.time()
-
-    # 1. Return Cache if valid
-    if _QUESTIONS_CACHE and (current_time - _LAST_FETCH_TIME < CACHE_DURATION):
-        # print("✅ Using Cached Questions")
-        return _QUESTIONS_CACHE
 
     url = f"{BASE}/{os.getenv('ZOHO_OWNER_NAME')}/{os.getenv('ZOHO_APP_LINK')}/report/Question_Master_Report"
     headers = {"Authorization": f"Zoho-oauthtoken {get_access_token()}"}
@@ -45,11 +46,10 @@ def fetch_all_zoho_questions():
         # 3. Update Cache
         data = res.json().get("data", [])
         if data:
-            _QUESTIONS_CACHE = data
-            _LAST_FETCH_TIME = current_time
-            print(f"✅ Cached {len(data)} questions.")
-        
-        return _QUESTIONS_CACHE
+            with open(CACHE_FILE, "w") as f:
+                json.dump(data, f)
+                
+        return data
 
     except Exception as e:
         print(f"Error fetching questions: {e}")
