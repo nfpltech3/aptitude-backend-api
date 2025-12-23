@@ -370,8 +370,18 @@
     </div>
 
 <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
+    // This runs immediately when the Test Page loads
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Get the token from the URL or template variable
+        // (Assuming your URL is /start-test?token=XYZ)
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        // 2. Tell the Android App to save it!
+        if (token && typeof Android !== "undefined" && Android.loginSuccess) {
+            Android.loginSuccess(token);
+        }
+    });
     
     let timerInterval = null;
     let timeRemaining = 0;
