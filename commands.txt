@@ -23,4 +23,19 @@ curl -X POST https://accounts.zoho.in/oauth/v2/token ^
 -d redirect_uri=http://localhost ^
 -d code=1000.7b0707236b94a9ea082f7bc3ea5688fd.d1f86294d9d16e462804d4c44209e1c8
 
+# 1. Initialize the project configuration
+npm init -y
+
+# 2. Install Capacitor core tools
+npm install @capacitor/core @capacitor/cli
+
+# 3. Create your app configuration
+# Follow prompts: Name: Nagarkot Test, ID: com.nagarkot.test
+npx cap init
+
+# 4. Install the Android platform and security plugin
+npm install @capacitor/android @capacitor/privacy-screen
+
+# 5. Add the Android project folder
+npx cap add android
 

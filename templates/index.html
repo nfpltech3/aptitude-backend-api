@@ -923,42 +923,73 @@
     }
 
     async function submitTest(isAuto = false) {
-        if (!isAuto && !isSubmitting) {
-            if(!confirm("Are you sure you want to submit?")) return;
-            isSubmitting = true;
-        }
-
-        clearInterval(timerInterval);
-
-        document.getElementById("test-interface").classList.remove("content-blur");
-        
-        // EXIT Full screen on submit
-        if (document.exitFullscreen) document.exitFullscreen().catch(e => {});
-
-        document.body.innerHTML = "<h1>Submitting... Please wait.</h1>";
-        
-        // Remove warnings so they don't persist if test is retaken (optional)
-        localStorage.removeItem(`warnings_${token}`);
-
-        try {
-            await fetch('https://aptitude-backend-b6ir.onrender.com/submit-test', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: token })
-            });
-            
-            document.body.innerHTML = `
-                <div style='text-align:center; margin-top:50px; font-family:sans-serif;'>
-                    <h1 style='color:green;'>Test Submitted Successfully!</h1>
-                    <p>You can close this tab now.</p>
-                </div>`;
-                
-        } catch (err) {
-            console.error(err);
-            document.body.innerHTML = "<h1>Submission Error. Please contact Admin.</h1>";
-        }
-        localStorage.removeItem("test_active_" + token);
+    if (!isAuto && !isSubmitting) {
+        if(!confirm("Are you sure you want to submit?")) return;
+        isSubmitting = true;
     }
+
+    // 1. STOP THE AUDIO ALERT IMMEDIATELY
+    const allAudio = document.querySelectorAll('audio');
+    allAudio.forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+    });
+
+    // STOP THE TIMER
+    clearInterval(timerInterval);
+    if (typeof warningInterval !== 'undefined') clearInterval(warningInterval);
+
+    // Remove proctoring listeners
+    window.onblur = null;
+    window.onfocus = null;
+    document.onvisibilitychange = null;
+
+    document.getElementById("test-interface").classList.remove("content-blur");
+    
+    if (document.exitFullscreen) document.exitFullscreen().catch(e => {});
+
+    document.body.innerHTML = "<h1>Submitting... Please wait.</h1>";
+    
+    localStorage.removeItem(`warnings_${token}`);
+
+    try {
+        const response = await fetch('https://aptitude-backend-b6ir.onrender.com/submit-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: token })
+        });
+        
+        if (response.ok) {
+            // 2. SUCCESS UI
+            document.body.innerHTML = `
+                <div style='text-align:center; margin-top:50px; font-family:sans-serif; padding: 20px;'>
+                    <h1 style='color:green;'>Test Submitted Successfully!</h1>
+                    <p>Thank you for completing the assessment.</p>
+                    <button onclick="closeApp()" style="padding:10px 20px; font-size:16px; background:#28a745; color:white; border:none; border-radius:5px;">
+                        Close Application
+                    </button>
+                </div>`;
+        } else {
+            throw new Error("Server responded with error");
+        }
+            
+    } catch (err) {
+        console.error(err);
+        document.body.innerHTML = "<h1>Submission Error. Please check your internet and try again.</h1>";
+    }
+    
+    localStorage.removeItem("test_active_" + token);
+}
+
+// 3. New Helper to talk to your Android Java code
+function closeApp() {
+    // If running in your Android WebView, this tells the app to close
+    if (window.AndroidInterface) {
+        window.AndroidInterface.closeApp();
+    } else {
+        window.close(); // Fallback for browsers
+    }
+}
 
     // --- 6. RENDER LOGIC ---
 function renderQuestions(questions, savedAnswers) {
