@@ -61,9 +61,9 @@ class CandidateWebhook(BaseModel):
     position: str
     has_dept_test: str # "Yes" or "No"
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def home():
-    return "Backend running"
+    return {"status": "alive", "msg": "Backend running"}
 
 @app.get("/api/check-token")
 def check_candidate_token(token: str, db: Session = Depends(get_db)):
