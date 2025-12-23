@@ -307,8 +307,20 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
     }
 
 @app.get("/start-test", response_class=HTMLResponse)
-def serve_test_page(request: Request, token: str):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def start_test_page(request: Request, token: str, db: Session = Depends(get_db)):
+    # 1. ✅ FETCH SESSION IMMEDIATELY (Fast DB Lookup)
+    session = crud.get_session_by_token(db, token)
+    
+    if not session:
+        return templates.TemplateResponse("error.html", {"request": request, "message": "Invalid Token"})
+
+    # 2. ✅ PASS 'candidate_name' TO THE HTML
+    return templates.TemplateResponse("test.html", {
+        "request": request,
+        "token": token,
+        "candidate_name": session.candidate_name, # <--- CRITICAL FIX
+        "position": session.position_name
+    })
 
 @app.post("/save-answer")
 def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):

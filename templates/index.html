@@ -378,8 +378,8 @@
         const token = urlParams.get('token');
 
         // 2. Tell the Android App to save it!
-        if (token && typeof Android !== "undefined" && Android.loginSuccess) {
-            Android.loginSuccess(token);
+        if (token && window.AndroidInterface) {
+            window.AndroidInterface.loginSuccess(token);
         }
     });
     
@@ -971,9 +971,12 @@
         });
         
         if (response.ok) {
-            // 1. Tell Android to forget this candidate
+            // 1. Tell Android to wipe the token and close
             if (window.AndroidInterface) {
+                // We call clearSession (to wipe storage) 
+                // and then testFinished (to exit)
                 window.AndroidInterface.clearSession(); 
+                window.AndroidInterface.testFinished(); 
             }
 
             // 2. Clear local JS storage
@@ -981,12 +984,9 @@
             localStorage.removeItem("test_active_" + token)
 
             document.body.innerHTML = `
-                <div style='text-align:center; margin-top:50px; font-family:sans-serif; padding: 20px;'>
+                <div style='text-align:center; margin-top:50px;'>
                     <h1 style='color:green;'>Test Submitted Successfully!</h1>
-                    <p>Thank you for completing the assessment.</p>
-                    <button onclick="closeApp()" style="padding:10px 20px; font-size:16px; background:#28a745; color:white; border:none; border-radius:5px;">
-                        Close Application
-                    </button>
+                    <button onclick="window.AndroidInterface.closeApp()" style="padding:15px;">Exit App</button>
                 </div>`;
         } else {
             throw new Error("Server responded with error");
