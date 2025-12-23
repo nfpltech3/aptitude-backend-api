@@ -307,18 +307,24 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
     }
 
 @app.get("/start-test", response_class=HTMLResponse)
-async def start_test_page(request: Request, token: str, db: Session = Depends(get_db)):
-    # 1. ✅ FETCH SESSION IMMEDIATELY (Fast DB Lookup)
+async def serve_test_page(request: Request, token: str, db: Session = Depends(get_db)):
+    # 1. Fetch Session from Local DB
     session = crud.get_session_by_token(db, token)
     
+    # 2. If no session exists, we can still serve index.html 
+    # and let the frontend JS handle the "Invalid Token" message
     if not session:
-        return templates.TemplateResponse("error.html", {"request": request, "message": "Invalid Token"})
+        return templates.TemplateResponse("index.html", {
+            "request": request, 
+            "token": token,
+            "error": "Invalid or Expired Token" 
+        })
 
-    # 2. ✅ PASS 'candidate_name' TO THE HTML
-    return templates.TemplateResponse("test.html", {
+    # 3. Serve your single index.html file
+    return templates.TemplateResponse("index.html", {
         "request": request,
         "token": token,
-        "candidate_name": session.candidate_name, # <--- CRITICAL FIX
+        "candidate_name": session.candidate_name,
         "position": session.position_name
     })
 

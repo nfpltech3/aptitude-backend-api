@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Candidate Assessment</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #ffffff;
+            margin: 0; 
+            color: #333; 
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* TIMER */
+        #timer-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 20px;
+            z-index: 1000;
+        }
+
+        #timer-display {
+            background-color: #F3E5F5; /* Light Lavender */
+            color: #9C27B0;            /* Dark Purple Text */
+            font-size: 1.3rem;
+            font-weight: 700;
+            font-family: monospace;
+            padding: 10px 25px;
+            border-radius: 50px;       /* Pill Shape */
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 10px rgba(156, 39, 176, 0.2);
+            border: 1px solid #E1BEE7;
+        }
+
+        /* Timer Icon (SVG) */
+        .timer-icon { width: 22px; height: 22px; fill: currentColor; }
+
+        /* Timer Critical Animation */
+        @keyframes gentle-pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.02); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .timer-critical {
+            background-color: #ffebee !important;
+            color: #c62828 !important;
+            border-color: #ef9a9a !important;
+            animation: gentle-pulse 1s infinite;
+        }
+        
+        /* --- 2. PROGRESS BAR (Fixed at very top) --- */
+        #progress-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 5px;
+            background: transparent;
+            z-index: 1001;
+        }
+        #progress-bar {
+            height: 100%;
+            background: #9C27B0;
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 40px;
+        }
+
+        /* --- 3. WARNING BOX (Floating below timer) --- */
+        #warning-box {
+            display: none; /* Hidden by default */
+            text-align: center;
+            margin: 10px auto;
+            max-width: 400px;
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ffeeba;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        /* --- 4. THE QUESTION CARD (New UI) --- */
+        #test-interface {
+            /* Mobile: 90% width (5% gap on sides) | Desktop: Max 600px */
+            width: 90%;
+            max-width: 650px; 
+            margin: 0 auto;  /* Center it */
+            padding-bottom: 50px;
+        }
+
+        /* This wrapper acts as the "Card" */
+        #questions-container {
+            background: #fff;
+            border: 2px solid #E1BEE7; /* Purple Border */
+            border-radius: 20px;       /* Rounded Corners */
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+        }
+
+        .question-text {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #4A148C;
+            margin-bottom: 25px;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        /* --- 5. OPTIONS & INPUTS --- */
+        .options label {
+            display: block;
+            width: 100%;
+            padding: 15px 15px;
+            margin-bottom: 12px;
+            background: #fff;
+            border: 1px solid #E0E0E0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-sizing: border-box; /* Ensures padding doesn't break width */
+        }
+
+        .options label:hover {
+            background-color: #F3E5F5;
+            border-color: #BA68C8;
+        }
+
+        .options label:has(input:checked) {
+            background-color: #E1BEE7; 
+            border-color: #9C27B0;
+            color: #4A148C;
+            font-weight: bold;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #E0E0E0;
+            background-color: #fafafa;
+            border-radius: 12px;
+            min-height: 100px;
+            transition: all 0.2s ease-in-out;
+            outline: none;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            background-color: #ffffff;
+            border-color: #333333;
+            color: #000;
+        }
+
+        /* --- BUTTONS --- */
+        .submit-container { margin-top: 25px; text-align: center; }
+
+        .btn {
+            background-color: #9C27B0; /* Purple Theme */
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .btn:hover { background-color: #7B1FA2; }
+        .hidden { display: none !important; }
+
+        /* --- WELCOME SCREEN --- */
+        #welcome-screen {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid #eee;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        textarea, input[type="text"] {
+            /* When we tell JS to scroll to 'start', this ensures it stops 
+            100px down from the top (leaving space for your Header) */
+            scroll-margin-top: 100px; 
+        }
+
+        /* --- MODAL --- */
+        #cheat-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+        }
+        .modal-content {
+            background: white;
+            color: #333;
+            max-width: 400px;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .content-blur {
+            filter: blur(8px);
+            -webkit-filter: blur(8px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .security-blur {
+            filter: blur(8px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* --- SCREENSHOT DEFENSE LAYER --- */
+        #privacy-curtain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* WATERMARK LAYER */
+        .watermark-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9998;
+            display: flex;
+            flex-wrap: wrap;
+            overflow: hidden;
+            opacity: 0.08;
+            user-select: none;
+        }
+
+        .watermark-text {
+            transform: rotate(-30deg);
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+            width: 300px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 10px 0; }
+            
+            #test-interface { 
+                width: 88%;
+            }
+            
+            #questions-container {
+                padding: 20px;
+                border-width: 1.5px;
+            }
+
+            #timer-display { font-size: 1.1rem; padding: 8px 18px; }
+            .question-text { font-size: 1rem; }
+        }
+
+        @media print {
+            body { display: none !important; }
+            html::after {
+                content: "Screenshots/Printing is disabled for security.";
+                display: block;
+                padding: 20px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="privacy-curtain">
+        ⚠️ SECURITY MODE ACTIVE<br>
+        Content hidden while window is inactive.
+    </div>
+
+    <div id="progress-container"><div id="progress-bar"></div></div>
+
+    <div id="timer-container">
+        <div id="timer-display">
+            <svg class="timer-icon" viewBox="0 0 24 24">
+                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+            </svg>
+            <span id="time-val">Loading...</span> 
+        </div>
+    </div>
+
+    <div id="warning-box">
+        ⚠️ Warning: Do not switch tabs! (<span id="warn-count">0</span>/3)
+    </div>
+
+    <div id="welcome-screen">
+        <h1 id="welcome-msg" style="color:#4A148C; margin-bottom: 10px;">Welcome to the Assessment</h1>
+        <p style="color:#666; margin-top:0;">Please read the proctoring rules carefully.</p>
+        
+        <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+        
+        <div style="text-align:left; margin-bottom:30px; font-size: 15px;">
+            <div style="background:#fff3cd; color:#856404; padding:15px; border-radius:8px; margin-bottom:20px;">
+                <h3 style="margin-top:0; color:#856404;">⚠️ STRICT PROCTORING ACTIVE</h3>
+                <p style="margin-bottom:0; font-weight:bold; color:#dc3545;">
+                    TAB SWITCHING WILL BE FLAGGED.
+                </p>
+            </div>
+            
+            <strong><u>Rules:</u></strong>
+            <ul style="margin-top:5px; padding-left:20px; line-height: 1.6;">
+                <li><b>No Tab Switching:</b> Leaving the test window triggers warnings.</li>
+                <li><b>Screenshots:</b> Disabled. Attempts will be logged.</li>
+                <li><b>Timer:</b> The test will auto-submit when the timer ends.</li>
+            </ul>
+        </div>
+        
+        <p id="loading-msg" style="color:#666; font-style:italic;">Verifying your link...</p>
+        
+        <button id="start-btn" class="btn hidden" onclick="beginTest()">
+            Start Assessment
+        </button>
+    </div>
+
+    <div id="test-interface" class="hidden">
+        <div id="questions-container">
+            </div>
+        
+        <div class="submit-container">
+            <button class="btn submit-btn" onclick="submitTest()">Submit</button>
+        </div>
+    </div>
+
+    <div id="cheat-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; align-items:center; justify-content:center;">
+        <div class="modal-content" style="background:white; padding:30px; border-radius:12px; text-align:center; max-width:90%; width:350px; margin: auto;">
+            <h2 style="color:#dc3545; margin-top:0;">⚠️ TAB SWITCH DETECTED</h2>
+            <p>You moved away from the test window.</p>
+            <p style="color:#666;"><b>Warning <span id="warn-count-modal"></span> of 3</b></p>
+            <button class="btn" onclick="closeWarning()" style="width:100%; margin-top:10px; background:#333;">Return to Test</button>
+        </div>
+    </div>
+
+<script>
+    // This runs immediately when the Test Page loads
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Get the token from the URL or template variable
+        // (Assuming your URL is /start-test?token=XYZ)
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        // 2. Tell the Android App to save it!
+        if (token && window.AndroidInterface && window.AndroidInterface.loginSuccess) {
+            window.AndroidInterface.loginSuccess(token);
+        }
+    });
+    
+    let timerInterval = null;
+    let timeRemaining = 0;
+    let warningCount = parseInt(localStorage.getItem(`warnings_${token}`) || "0");
+    const MAX_WARNINGS = 3;
+    let isSubmitting = false;
+
+    // Tracking Variables
+    let lastViolationTime = 0;
+    let violationTimer = null;
+    let isRefreshing = false;
+
+    let annoyingBeepOscillator = null;
+    let audioCtx = null;
+
+    // --- 1. INITIALIZATION ---
+    async function init() {
+        // UI Setup
+        if(warningCount > 0) {
+            document.getElementById("warn-count").innerText = warningCount;
+            document.getElementById("warning-box").style.display = "block";
+        }
+
+        try {
+            const res = await fetch(`https://aptitude-backend-b6ir.onrender.com/api/check-token?token=${token}`);
+            const data = await res.json();
+
+            if (data.status === "Submitted" || data.status === "Auto-Submitted") {
+                document.body.innerHTML = "<h1 style='text-align:center; margin-top:50px;'>Test Already Submitted</h1>";
+                return;
+            }
+
+            if (!res.ok) {
+                document.getElementById('welcome-msg').innerText = "Error";
+                document.getElementById('loading-msg').innerText = data.detail || "Invalid Link";
+                return;
+            }
+
+            // 2. Handle Resuming
+            if (data.status === "Resuming") {
+                
+                const isMyTest = localStorage.getItem("test_active_" + token);
+
+                if (isMyTest === "true") {
+                    console.log("Valid Refresh Detected. Resuming...");
+                    beginTest(); 
+                } else {
+                    document.body.innerHTML = `
+                        <div style="text-align:center; padding:50px; color:#d9534f;">
+                            <h1>🚫 Access Denied</h1>
+                            <p>This test is currently running on another device or browser.</p>
+                            <p>Simultaneous logins are not permitted.</p>
+                        </div>
+                    `;
+                }
+            } else {
+                // 3. New User
+                document.getElementById('welcome-msg').innerText = `Welcome, ${data.name}`;
+                document.getElementById('loading-msg').classList.add('hidden');
+                document.getElementById('start-btn').classList.remove('hidden');
+            }
+
+        } catch (err) { console.error(err); }
+    }
+
+
+    // --- 2. START TEST LOGIC ---
+    async function beginTest() {
+        try {
+            getAudioContext().resume();
+        } catch(e) { console.log("Audio init error", e); }
+
+        requestFullScreen();
+
+        const welcomeScreen = document.getElementById('welcome-screen');
+        if (welcomeScreen) welcomeScreen.innerHTML = "<h1>Setting up your test...</h1>";
+        
+        try {
+            const res = await fetch('https://aptitude-backend-b6ir.onrender.com/api/start-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+            
+            const data = await res.json();
+            
+            if (!res.ok) {
+                alert("Error: " + (data.detail || "Unknown error"));
+                return;
+            }
+
+            localStorage.setItem("test_active_" + token, "true");
+
+            if (data.status === "Submitted") {
+                document.body.innerHTML = "<h1>Test Already Submitted</h1>";
+                return;
+            }
+
+            if (welcomeScreen) welcomeScreen.classList.add('hidden');
+            document.getElementById('test-interface').classList.remove('hidden');
+
+            timeRemaining = data.remaining_seconds;
+            updateTimerDisplay();
+            
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(countdown, 1000);
+
+            requestWakeLock();
+            setupProctoring();
+
+            // addWatermark(data.candidate_name, data.candidate_id);
+
+            renderQuestions(data.questions, data.saved_answers || {});
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to connect to server.");
+        }
+    }
+
+    function isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    function requestFullScreen() {
+        const docElm = document.documentElement;
+        // iOS Safari does not support requestFullscreen on elements. We skip it for them.
+        if (docElm.requestFullscreen) {
+            docElm.requestFullscreen().catch(() => {});
+        } else if (docElm.mozRequestFullScreen) { 
+            docElm.mozRequestFullScreen();
+        } else if (docElm.webkitRequestFullScreen) { 
+            docElm.webkitRequestFullScreen();
+        } 
+        // Note: We don't error out if it fails on mobile.
+    }
+
+    // --- 3. TIMER LOGIC ---
+    function countdown() {
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('time-val').innerText = "00:00";
+            autoSubmitTest("Time Expired");
+        } else {
+            timeRemaining--; 
+            updateTimerDisplay();
+        }
+    }
+
+    function updateTimerDisplay() {
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        const display = document.getElementById('time-val');
+        display.innerText = `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+        if (timeRemaining <= 60) {
+            // Critical Mode (Last 60s)
+            display.classList.add('timer-critical');
+        }
+        else if (timeRemaining < 300) {
+            // Warning Mode (Last 5 mins)
+            display.classList.remove('timer-critical'); // Stop flickering if we added time back
+            display.style.color = "red";
+        } 
+        else {
+            // Normal Mode
+            display.classList.remove('timer-critical');
+            display.style.color = ""; // Reset to default
+        }
+    }
+
+    let violationCount = 0;
+    let lastVisibleTime = Date.now();
+    let blurTimer = null;
+
+    // --- 4. STRICT PROCTORING LOGIC ---
+    function setupProctoring() {
+        // 1. Helper to toggle the Blur Effect
+        const toggleBlur = (enable) => {
+            const body = document.body;
+            if (enable) body.classList.add('security-blur');
+            else body.classList.remove('security-blur');
+        };
+        
+        // Attempt to keep screen awake
+        if ('wakeLock' in navigator) {
+            try { navigator.wakeLock.request('screen'); } catch (err) { console.log(err); }
+        }
+
+        let lastVisibleTime = Date.now();
+        let blurTimer = null;
+        let shortSwitchCount = 0;
+
+        // A. TAB SWITCH / VISIBILITY CHANGE (Time Penalties)
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                // User LEFT the tab
+                if (blurTimer) clearTimeout(blurTimer);
+                lastVisibleTime = Date.now();
+                scheduleDelayedBeep();
+            } else {
+                // User RETURNED
+                stopBeep();
+                const timeAway = Date.now() - lastVisibleTime;
+                lastVisibleTime = Date.now();
+
+                // 1. Auto-Submit if away too long (>30s)
+                if (timeAway > 30000) {
+                    toggleBlur(true);
+                    alert("CRITICAL VIOLATION: You were away for " + Math.round(timeAway/1000) + "s.\n\nTest will now be Auto-Submitted.");
+                    toggleBlur(false);
+                    submitTest(true);
+                    return;
+                }
+
+                // 2. Calculate Penalty
+                if (timeAway < 5000) {
+                // It was a short switch. Increment the counter.
+                    shortSwitchCount++;
+                    console.log("Short Switch Detected. Count:", shortSwitchCount);
+
+                    // If they do it more than 2 times, PUNISH THEM.
+                    if (shortSwitchCount > 2) {
+                        attemptViolation("Frequent Tab Switching (Pattern Detected)", 1);
+                        shortSwitchCount = 0; // Reset counter after punishment
+                    }
+                    return; 
+                }
+
+                shortSwitchCount = 0;
+
+                // Calculate Penalties (1 warning per 10 seconds)
+                let warningsToGive = Math.floor(timeAway / 10000); 
+                if (warningsToGive === 0) warningsToGive = 1;
+
+                attemptViolation(`App Switch (${Math.round(timeAway/1000)}s)`, warningsToGive);
+            }
+        });
+
+        // B. WINDOW BLUR (Focus Lost / Clicking Outside)
+        window.addEventListener("blur", () => {
+            if (isSubmitting) return;
+
+            // We do NOT show the black curtain here (per your request).
+            // We only track if they stay blurred for too long.
+            blurTimer = setTimeout(() => {
+                // Only penalize if the window is technically "visible" (e.g. overlay or split screen)
+                if (document.visibilityState === 'visible') {
+                    attemptViolation("Focus Lost / Overlay Detected");
+                }
+            }, 4000);
+        });
+
+        window.addEventListener("focus", () => {
+            if (blurTimer) clearTimeout(blurTimer);
+        });
+
+        // C. FULL SCREEN EXIT DETECTION
+        if (!/Mobi|Android/i.test(navigator.userAgent)) {
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement && !isSubmitting && !isRefreshing) {
+                    attemptViolation("Exited Full Screen Mode");
+                }
+            });
+        }
+
+        // D. REFRESH DETECTION & BLOCK KEYS
+        window.addEventListener("beforeunload", () => {
+            isRefreshing = true;
+            if (violationTimer) clearTimeout(violationTimer);
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if(e.key === "F12") { e.preventDefault(); e.stopPropagation(); }
+            
+            if(e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "J" || e.key === "j" || e.key === "C" || e.key === "c")) {
+                e.preventDefault(); e.stopPropagation();
+            }
+            // Block Ctrl+P (Print)
+            if(e.ctrlKey && (e.key === "p" || e.key === "P")) { 
+                e.preventDefault(); 
+                e.stopPropagation();
+            }
+            if(e.ctrlKey && (e.key === "U" || e.key === "u")) {
+                e.preventDefault(); e.stopPropagation();
+            }
+            // e.metaKey is the "Windows" key on PC or "Command" on Mac
+            if ((e.metaKey || e.key === "Meta") && e.shiftKey && (e.key === 's' || e.key === 'S')) {
+                e.preventDefault(); // Try to cancel it (rarely works on OS level, but good to try)
+                e.stopPropagation();
+
+                // 1. IMMEDIATE ACTION: Blur the screen
+                toggleBlur(true);
+
+                // 2. Wipe Clipboard (In case they actually capture something)
+                navigator.clipboard.writeText("⚠️ Snipping Tool Detected - Violation Recorded");
+
+                // 3. Alert (This pauses the JS and keeps the blur active)
+                // We delay slightly to let the Blur render before the Alert freezes the thread
+                setTimeout(() => {
+                    alert("Snipping Tool detected!\n\nThis violation has been recorded.");
+                    toggleBlur(false); // Unblur only after they click OK
+                    attemptViolation("Snipping Tool Attempt", 1);
+                }, 10);
+                
+                return false;
+            }
+        });
+
+        // E. AGGRESSIVE FOCUS POLLING (Overlays)
+        setInterval(() => {
+            if (!isSubmitting && document.visibilityState === 'visible') {
+                const timeSinceVisible = Date.now() - lastVisibleTime;
+                if (timeSinceVisible < 3000) return;
+
+                if (!document.hasFocus()) {
+                    attemptViolation("System Overlay Detected");
+                }
+            }
+        }, 2000);
+
+        // F. SCREENSHOT DEFENSE (Clipboard Wipe Only)
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'PrintScreen') {
+                // 1. Wipe Clipboard
+                navigator.clipboard.writeText("⚠️ Cheating Detected: Screenshot Disabled");
+
+                // 2. BLUR THE BACKGROUND
+                toggleBlur(true);
+
+                // 3. Show Alert (This freezes the browser while blurred)
+                // We use setTimeout to ensure the browser paints the blur class before freezing
+                setTimeout(() => {
+                    alert("Screenshots are strictly prohibited!\n\nThis violation has been recorded.");
+                    
+                    // 4. Unblur after they click OK
+                    toggleBlur(false);
+                    
+                    // 5. Log Violation
+                    attemptViolation("Screenshot Attempt (Key)", 1);
+                }, 10);
+            }
+        });
+
+    // G. BLOCK RIGHT CLICK / COPY / PASTE
+    document.addEventListener("contextmenu", (e) => { e.preventDefault(); return false; });
+    document.addEventListener("copy", (e) => e.preventDefault());
+    document.addEventListener("paste", (e) => e.preventDefault());
+
+    // H. CSS PRINT PROTECTION
+    // Inject CSS to ensure if they try to Print to PDF, it comes out black/blank
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @media print { 
+            body { display: none !important; } 
+            html::after { content: "Printing Disabled"; display: block; font-size: 30px; margin: 50px; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+    function addWatermark(candidateName, candidateID) {
+        // 1. Create container
+        const container = document.createElement('div');
+        container.className = 'watermark-container';
+
+        // 2. Calculate density based on screen size
+        const total = Math.ceil((window.innerHeight * window.innerWidth) / 30000) * 1.5;
+
+        for (let i = 0; i < total; i++) {
+            const div = document.createElement('div');
+            div.className = 'watermark-text';
+            div.innerHTML = `${candidateName}<br>${candidateID}`; 
+            container.appendChild(div);
+        }
+
+        document.body.appendChild(container);
+        
+        // 3. Anti-Tamper: If they try to delete it, re-add it & flag violation
+        const observer = new MutationObserver((mutations) => {
+            if (!document.body.contains(container)) {
+                document.body.appendChild(container);
+                // Optional: You can trigger a violation if you want strictness
+                // attemptViolation("Tampering with Security Layer");
+            }
+        });
+        observer.observe(document.body, { childList: true });
+    }
+
+    function attemptViolation(reason, penaltyPoints = 1) {
+        // 1. Ignore if page is unloading (Refresh)
+        if (isRefreshing) return;
+
+        // 2. Ignore if Modal is open
+        const modal = document.getElementById("cheat-modal");
+        if (modal.style.display === "block") return;
+
+        // 3. Clear existing timer to reset the delay
+        if (violationTimer) clearTimeout(violationTimer);
+
+        // 4. DELAY CHECK: Wait 100ms to see if 'beforeunload' fires
+        violationTimer = setTimeout(() => {
+            playInstantBeep();
+
+            // Check Cooldown (2 seconds) - Prevents spamming your Server/Database
+            const now = Date.now();
+            if (now - lastViolationTime < 2000) return;
+            lastViolationTime = now;
+
+            handleViolation(reason, penaltyPoints);
+        }, 100);
+    }
+
+    async function handleViolation(reason, points) {
+        // Double check refreshing status inside the execution
+        if (isRefreshing) return;
+
+        warningCount = warningCount + points;
+        localStorage.setItem(`warnings_${token}`, warningCount);
+
+        // Update UI
+        document.getElementById("warn-count").innerText = warningCount;
+        document.getElementById("warn-count-modal").innerText = warningCount;
+        document.getElementById("warning-box").style.display = "block";
+
+        const serverReason = points > 1 ? `${reason} [x${points} Penalty]` : reason;
+        console.log(`Violation Total: ${warningCount}. Added: ${points}. Reason: ${reason}`);
+
+        fetch('https://aptitude-backend-b6ir.onrender.com/api/record-violation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: token, reason: reason })
+        }).catch(err => {});
+
+        // Check Max Limit
+        if (warningCount >= MAX_WARNINGS) {
+            autoSubmitTest(`Proctoring Violation: ${reason}`);
+        } else {
+            // Show Warning Modal
+            const modal = document.getElementById("cheat-modal");
+            modal.style.display = "block";
+            
+            // Update the text in the modal to explain why they got multiple warnings
+            const modalMsg = modal.querySelector("p");
+            if(points > 1) {
+                // Optional: Show specific message for severe penalty
+                // You might need to add an ID to the <p> tag in HTML to target it easily
+            }
+            
+            const btn = modal.querySelector("button");
+            if(btn) btn.focus();
+            
+            document.getElementById("test-interface").classList.add("content-blur");
+            document.getElementById("test-header").classList.add("content-blur");
+        }
+    }
+
+    function closeWarning() {
+        requestFullScreen();
+
+        const modal = document.getElementById("cheat-modal");
+        modal.style.display = "none";
+
+        // REMOVE BLUR
+        document.getElementById("test-interface").classList.remove("content-blur");
+        document.getElementById("test-header").classList.remove("content-blur");
+    }
+
+    // --- 5. SUBMISSION LOGIC ---
+    async function autoSubmitTest(reason) {
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        alert(`Test Submitting Automatically: ${reason}`);
+        submitTest(true);
+    }
+
+    // --- HELPER: KEEP SCREEN AWAKE ---
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                await navigator.wakeLock.request('screen');
+                console.log("Screen Wake Lock active.");
+                
+                // Re-apply lock if user comes back from a switch
+                document.addEventListener('visibilitychange', async () => {
+                    if (document.visibilityState === 'visible') {
+                        await navigator.wakeLock.request('screen');
+                    }
+                });
+            }
+        } catch (err) { console.warn("Wake Lock not supported/allowed"); }
+    }
+
+    function getAudioContext() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioCtx;
+    }
+
+    function scheduleDelayedBeep() {
+        // This schedules a beep to start 10 seconds in the future
+        // It works even if the tab is in the background (Audio Hardware timing)
+        try {
+            const ctx = getAudioContext();
+            if(ctx.state === 'suspended') ctx.resume();
+
+            annoyingBeepOscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            annoyingBeepOscillator.type = 'sawtooth'; 
+            annoyingBeepOscillator.frequency.value = 1000; // Annoying high pitch
+
+            // Volume: Loud
+            gain.gain.value = 0.5; 
+
+            annoyingBeepOscillator.connect(gain);
+            gain.connect(ctx.destination);
+
+            // 🛑 THE MAGIC: Start playing at 'Current Time + 10 seconds'
+            annoyingBeepOscillator.start(ctx.currentTime + 10);
+            
+        } catch (e) { console.error("Audio schedule failed", e); }
+    }
+
+    function stopBeep() {
+        try {
+            if (annoyingBeepOscillator) {
+                annoyingBeepOscillator.stop();
+                annoyingBeepOscillator.disconnect();
+                annoyingBeepOscillator = null;
+            }
+        } catch (e) {}
+    }
+
+    function playInstantBeep() {
+        // Used for immediate warnings
+        try {
+            const ctx = getAudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.frequency.value = 880;
+            gain.gain.value = 0.3;
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+        } catch(e) {}
+    }
+
+    async function submitTest(isAuto = false) {
+    if (!isAuto && !isSubmitting) {
+        if(!confirm("Are you sure you want to submit?")) return;
+        isSubmitting = true;
+    }
+
+    // 1. STOP THE AUDIO ALERT IMMEDIATELY
+    const allAudio = document.querySelectorAll('audio');
+    allAudio.forEach(audio => {
+        audio.pause();
+        audio.src = "";
+        audio.currentTime = 0;
+    });
+
+    // STOP THE TIMER
+    clearInterval(timerInterval);
+    if (typeof warningInterval !== 'undefined') clearInterval(warningInterval);
+
+    // Remove proctoring listeners
+    window.onblur = null;
+    window.onfocus = null;
+    document.onvisibilitychange = null;
+
+    document.getElementById("test-interface").classList.remove("content-blur");
+    
+    if (document.exitFullscreen) document.exitFullscreen().catch(e => {});
+
+    document.body.innerHTML = "<h1>Submitting... Please wait.</h1>";
+    
+    localStorage.removeItem(`warnings_${token}`);
+
+    try {
+        const response = await fetch('https://aptitude-backend-b6ir.onrender.com/submit-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: token })
+        });
+        
+        if (response.ok) {
+            // 1. Tell Android to wipe the token and close
+            if (window.AndroidInterface) {
+                // We call clearSession (to wipe storage) 
+                // and then testFinished (to exit)
+                window.AndroidInterface.clearSession(); 
+                window.AndroidInterface.testFinished(); 
+            }
+
+            // 2. Clear local JS storage
+            localStorage.removeItem(`warnings_${token}`);
+            localStorage.removeItem("test_active_" + token)
+
+            document.body.innerHTML = `
+                <div style='text-align:center; margin-top:50px;'>
+                    <h1 style='color:green;'>Test Submitted Successfully!</h1>
+                    <button onclick="window.AndroidInterface.closeApp()" style="padding:15px;">Exit App</button>
+                </div>`;
+        } else {
+            throw new Error("Server responded with error");
+        }
+        // Tell the Android App to delete the token & unlock screen
+        if (typeof Android !== "undefined" && Android.testFinished) {
+            Android.testFinished();
+        }
+            
+    } catch (err) {
+        console.error(err);
+        document.body.innerHTML = "<h1>Submission Error. Please check your internet and try again.</h1>";
+    }
+    
+    localStorage.removeItem("test_active_" + token);
+}
+
+// 3. New Helper to talk to your Android Java code
+function closeApp() {
+    // If running in your Android WebView, this tells the app to close
+    if (window.AndroidInterface) {
+        window.AndroidInterface.closeApp();
+    } else {
+        window.close(); // Fallback for browsers
+    }
+}
+
+    // --- 6. RENDER LOGIC ---
+function renderQuestions(questions, savedAnswers) {
+    const container = document.getElementById('questions-container');
+    
+    let htmlContent = '';
+    let currentTopic = null;
+
+    questions.forEach((q, index) => {
+        const qIdStr = String(q.question_id);
+        const savedVal = savedAnswers[qIdStr];
+        
+        // --- A. INSERT HEADER IF TOPIC CHANGED ---
+        const thisTopic = q.topic || "General"; 
+        
+        if (thisTopic !== currentTopic) {
+            currentTopic = thisTopic;
+            htmlContent += `
+                <div class="topic-header">
+                    <h3>${currentTopic} Section</h3>
+                    <hr>
+                </div>`;
+        }
+
+        let inputHtml = '';
+        if (q.type === 'MCQ') {
+            inputHtml = `<div class="options">
+                ${q.options.map(opt => {
+                    const isChecked = (savedVal === opt) ? 'checked' : '';
+                    return `<label style="display:block; padding:10px; border:1px solid #eee; margin-bottom:5px; border-radius:4px; cursor:pointer; background:#fafafa;">
+                                <input type="radio" name="q_${q.question_id}" value="${opt}" 
+                                    onchange="saveAnswer('${q.question_id}', this.value)" 
+                                    ${isChecked}> ${opt}
+                            </label>`;
+                }).join('')}
+            </div>`;
+        } else {
+            const valText = savedVal || '';
+            inputHtml = `<textarea style="width:100%; height:80px; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;" 
+                            placeholder="Type your answer here..." 
+                            onblur="saveAnswer('${q.question_id}', this.value)">${valText}</textarea>`;
+        }
+        
+        htmlContent += `
+            <div class="question-card" style="background:white; border-left:5px solid #007bff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                <div class="question-text" style="margin-bottom:15px; font-size:1.1em; color:#333;">
+                    <strong>Q${index + 1}.</strong> ${q.text}
+                </div>
+                ${inputHtml}
+            </div>`;
+    });
+
+    container.innerHTML = htmlContent;
+}
+
+    async function saveAnswer(qid, val) {
+        updateProgress();
+        if(isSubmitting) return;
+        try {
+            await fetch('https://aptitude-backend-b6ir.onrender.com/save-answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token, question_id: qid.toString(), answer_text: val })
+            });
+        } catch(e) {}
+    }
+
+    function updateProgress() {
+        const totalQuestions = document.querySelectorAll('.question-card').length;
+        // Count how many radios are checked OR textareas have value
+        const answered = document.querySelectorAll('input[type="radio"]:checked').length + 
+                        Array.from(document.querySelectorAll('textarea')).filter(t => t.value.trim() !== '').length;
+        
+        const percent = (answered / totalQuestions) * 100;
+        document.getElementById('progress-bar').style.width = percent + "%";
+    }
+
+    let paddingResetTimer = null;
+    const container = document.getElementById('test-interface');
+
+    document.getElementById('questions-container').addEventListener('focusin', function(e) {
+        if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) {
+            
+            // 1. Add empty space at the bottom of the container
+            if (paddingResetTimer) clearTimeout(paddingResetTimer);
+            container.style.paddingBottom = '30vh'; 
+
+            // 2. Wait for keyboard to fully slide up (Android/iOS takes ~300ms)
+            setTimeout(() => {
+                const rect = e.target.getBoundingClientRect();
+                
+                // Calculate the actual visible height
+                const visibleHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                
+                // Logic: Is the Input's BOTTOM edge hidden behind the keyboard?
+                const isObscured = rect.bottom > visibleHeight;
+
+                if (isObscured) {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } 
+                // CASE B: It's not covered. Do NOTHING. (User stays exactly where they scrolled)
+                
+            }, 300);
+        }
+    });
+
+    document.getElementById('questions-container').addEventListener('focusout', function(e) {
+        if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) {
+            // Remove the buffer space when they leave
+            paddingResetTimer = setTimeout(() => {
+                container.style.paddingBottom = '80px';
+            }, 200);
+        }
+    });
+
+    init();
+</script>
+</body>
+</html>
