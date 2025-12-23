@@ -932,6 +932,7 @@
     const allAudio = document.querySelectorAll('audio');
     allAudio.forEach(audio => {
         audio.pause();
+        audio.src = "";
         audio.currentTime = 0;
     });
 
@@ -960,7 +961,15 @@
         });
         
         if (response.ok) {
-            // 2. SUCCESS UI
+            // 1. Tell Android to forget this candidate
+            if (window.AndroidInterface) {
+                window.AndroidInterface.clearSession(); 
+            }
+
+            // 2. Clear local JS storage
+            localStorage.removeItem(`warnings_${token}`);
+            localStorage.removeItem("test_active_" + token)
+
             document.body.innerHTML = `
                 <div style='text-align:center; margin-top:50px; font-family:sans-serif; padding: 20px;'>
                     <h1 style='color:green;'>Test Submitted Successfully!</h1>
@@ -971,6 +980,10 @@
                 </div>`;
         } else {
             throw new Error("Server responded with error");
+        }
+        // Tell the Android App to delete the token & unlock screen
+        if (typeof Android !== "undefined" && Android.testFinished) {
+            Android.testFinished();
         }
             
     } catch (err) {
