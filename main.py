@@ -321,7 +321,7 @@ def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
     if session.status != "In-Progress":
         raise HTTPException(status_code=403, detail="Test already submitted")
 
-    safe_qid = int(data.question_id)
+    safe_qid = data.question_id
 
     # 2. Check if answer already exists (Upsert)
     existing_answer = db.query(models.Answer).filter(

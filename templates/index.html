@@ -396,7 +396,7 @@
         }
 
         try {
-            const res = await fetch(`/api/check-token?token=${token}`);
+            const res = await fetch(`https://aptitude-backend-b6ir.onrender.com/api/check-token?token=${token}`);
             const data = await res.json();
 
             if (data.status === "Submitted" || data.status === "Auto-Submitted") {
@@ -450,7 +450,7 @@
         if (welcomeScreen) welcomeScreen.innerHTML = "<h1>Setting up your test...</h1>";
         
         try {
-            const res = await fetch('/api/start-test', {
+            const res = await fetch('https://aptitude-backend-b6ir.onrender.com/api/start-test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: token })
@@ -799,7 +799,7 @@
         const serverReason = points > 1 ? `${reason} [x${points} Penalty]` : reason;
         console.log(`Violation Total: ${warningCount}. Added: ${points}. Reason: ${reason}`);
 
-        fetch('/api/record-violation', {
+        fetch('https://aptitude-backend-b6ir.onrender.com/api/record-violation', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: token, reason: reason })
@@ -941,7 +941,7 @@
         localStorage.removeItem(`warnings_${token}`);
 
         try {
-            await fetch('/submit-test', {
+            await fetch('https://aptitude-backend-b6ir.onrender.com/submit-test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: token })
@@ -1018,7 +1018,7 @@ function renderQuestions(questions, savedAnswers) {
         updateProgress();
         if(isSubmitting) return;
         try {
-            await fetch('/save-answer', {
+            await fetch('https://aptitude-backend-b6ir.onrender.com/save-answer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: token, question_id: qid.toString(), answer_text: val })
