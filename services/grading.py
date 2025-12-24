@@ -2,6 +2,7 @@
 import string
 from sqlalchemy.orm import Session
 from models import Answer, TestSession
+from services.grading_llm import get_llm_grade
 
 def check_match(user_input: str, correct_answer: str) -> bool:
     """Helper: Normalizes text (lowercase, no punctuation) for flexible matching."""
@@ -57,21 +58,24 @@ def calculate_score(session: TestSession, db: Session):
                     
             elif q_type == "Short Descriptive":
                 correct_text_raw = str(q_data.get("correct_desc", ""))
+                llm_score = get_llm_grade(u_ans, correct_text_raw, max_marks)
+
+                if llm_score > 0:
+                    is_correct = True
+                    current_q_score = llm_score
                 
-                # 1. Split into a list of valid answers
-                possible_answers = [x.strip() for x in correct_text_raw.split('|')]
-                
-                # 2. Check if User's Input matches ANY of the valid answers
-                for valid_opt in possible_answers:
-                    if check_match(u_ans, valid_opt):
-                        is_correct = True
-                        break
-            
+                if not is_correct:
+                    possible_answers = [x.strip() for x in correct_text_raw.split('|')]
+                    for valid_opt in possible_answers:
+                        if check_match(u_ans, valid_opt):
+                            is_correct = True
+                            current_q_score = max_marks
+                            break
+        
             # Assign Marks
             if is_correct:
-                current_q_score = max_marks
-                total_score += max_marks
-                print(f"   ✅ Q[{q_id}] Correct (+{max_marks})")
+                total_score += current_q_score
+                print(f"   ✅ Q[{q_id}] Correct (+{current_q_score})")
             else:
                 print(f"   ❌ Q[{q_id}] Wrong")
 
