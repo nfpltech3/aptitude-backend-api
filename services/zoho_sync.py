@@ -69,6 +69,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
             topic = ans.get('topic', 'General')
             awarded = ans.get('marks_awarded', 0)
             max_marks = ans.get('max_marks', 1)
+            total_max_marks += int(ans.get('max_marks', 1))
 
             if topic != current_topic:
                 current_topic = topic
@@ -106,6 +107,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
         "data": {
             "Test_Status": status,
             "Total_Score": mcq_score,
+            "Max_Possible_Marks": total_max_marks,
             "Aptitude_Score": apt_total,
             "Numerical_Score": num_total,
             "Verbal_Score": vrb_total,
