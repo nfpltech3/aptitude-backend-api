@@ -25,13 +25,13 @@
         }
 
         #timer-display {
-            background-color: #F3E5F5; /* Light Lavender */
-            color: #9C27B0;            /* Dark Purple Text */
+            background-color: #F3E5F5;
+            color: #9C27B0;
             font-size: 1.3rem;
             font-weight: 700;
             font-family: monospace;
             padding: 10px 25px;
-            border-radius: 50px;       /* Pill Shape */
+            border-radius: 50px;
             display: inline-flex;
             align-items: center;
             gap: 12px;
@@ -39,10 +39,8 @@
             border: 1px solid #E1BEE7;
         }
 
-        /* Timer Icon (SVG) */
         .timer-icon { width: 22px; height: 22px; fill: currentColor; }
 
-        /* Timer Critical Animation */
         @keyframes gentle-pulse {
             0% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.8; transform: scale(1.02); }
@@ -87,20 +85,20 @@
             animation: pulse 2s infinite;
         }
 
-        /* --- 4. THE QUESTION CARD (New UI) --- */
+        /* --- 4. THE QUESTION CARD --- */
         #test-interface {
             /* Mobile: 90% width (5% gap on sides) | Desktop: Max 600px */
             width: 90%;
             max-width: 650px; 
-            margin: 0 auto;  /* Center it */
+            margin: 0 auto;
             padding-bottom: 50px;
         }
 
         /* This wrapper acts as the "Card" */
         #questions-container {
             background: #fff;
-            border: 2px solid #E1BEE7; /* Purple Border */
-            border-radius: 20px;       /* Rounded Corners */
+            border: 2px solid #E1BEE7;
+            border-radius: 20px;
             padding: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.03);
         }
@@ -125,7 +123,7 @@
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s;
-            box-sizing: border-box; /* Ensures padding doesn't break width */
+            box-sizing: border-box;
         }
 
         .options label:hover {
@@ -162,7 +160,7 @@
         .submit-container { margin-top: 25px; text-align: center; }
 
         .btn {
-            background-color: #9C27B0; /* Purple Theme */
+            background-color: #9C27B0;
             color: white;
             padding: 12px 30px;
             border: none;
@@ -380,6 +378,7 @@
     let warningCount = parseInt(localStorage.getItem(`warnings_${token}`) || "0");
     const MAX_WARNINGS = 3;
     let isSubmitting = false;
+    let testHasStarted = false;
 
     document.addEventListener("DOMContentLoaded", function() {
         if(jinjaName) {
@@ -451,6 +450,8 @@
 
     // --- 2. START TEST LOGIC ---
     async function beginTest() {
+        testHasStarted = true;
+
         try {
             getAudioContext().resume();
         } catch(e) { console.log("Audio init error", e); }
@@ -579,9 +580,10 @@
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
                 // User LEFT the tab
-                if (blurTimer) clearTimeout(blurTimer);
-                lastVisibleTime = Date.now();
-                scheduleDelayedBeep();
+                if (testHasStarted && !isSubmitting) { 
+                    lastVisibleTime = Date.now();
+                    scheduleDelayedBeep();
+                }
             } else {
                 // User RETURNED
                 stopBeep();
@@ -773,7 +775,7 @@
 
     function attemptViolation(reason, penaltyPoints = 1) {
         // 1. Ignore if page is unloading (Refresh)
-        if (isRefreshing) return;
+        if (!testHasStarted || isSubmitting || isRefreshing) return;
 
         // 2. Ignore if Modal is open
         const modal = document.getElementById("cheat-modal");
@@ -782,11 +784,9 @@
         // 3. Clear existing timer to reset the delay
         if (violationTimer) clearTimeout(violationTimer);
 
-        // 4. DELAY CHECK: Wait 100ms to see if 'beforeunload' fires
         violationTimer = setTimeout(() => {
             playInstantBeep();
-
-            // Check Cooldown (2 seconds) - Prevents spamming your Server/Database
+            
             const now = Date.now();
             if (now - lastViolationTime < 2000) return;
             lastViolationTime = now;
@@ -911,11 +911,17 @@
     function stopBeep() {
         try {
             if (annoyingBeepOscillator) {
+                // 1. Stop the sound
                 annoyingBeepOscillator.stop();
+                // 2. DISCONNECT it from the output (Crucial)
                 annoyingBeepOscillator.disconnect();
                 annoyingBeepOscillator = null;
             }
-        } catch (e) {}
+            // 3. Suspend the clock
+            if (audioCtx && audioCtx.state === 'running') {
+                audioCtx.suspend(); 
+            }
+        } catch (e) { console.error("Stop beep failed", e); }
     }
 
     function playInstantBeep() {
@@ -939,7 +945,6 @@
         isSubmitting = true;
     }
 
-    // 1. STOP THE AUDIO ALERT IMMEDIATELY
     const allAudio = document.querySelectorAll('audio');
     allAudio.forEach(audio => {
         audio.pause();
@@ -947,11 +952,15 @@
         audio.currentTime = 0;
     });
 
-    // STOP THE TIMER
+    stopBeep();
+    if (audioCtx) {
+        await audioCtx.close();
+        audioCtx = null;
+    }
+
     clearInterval(timerInterval);
     if (typeof warningInterval !== 'undefined') clearInterval(warningInterval);
 
-    // Remove proctoring listeners
     window.onblur = null;
     window.onfocus = null;
     document.onvisibilitychange = null;
