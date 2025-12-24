@@ -168,7 +168,8 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
         crud.start_session_timer(db, session, session.duration_minutes)
     
     # 3. Fetch Questions (from Cache)
-    if not session.question_cache:
+    # if not session.question_cache:
+    if True:
         raw_questions = fetch_all_zoho_questions()
         
         # B. Clean & Standardize Data

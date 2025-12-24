@@ -890,6 +890,11 @@
             const ctx = getAudioContext();
             if(ctx.state === 'suspended') ctx.resume();
 
+            if (annoyingBeepOscillator) {
+                annoyingBeepOscillator.stop();
+                annoyingBeepOscillator.disconnect();
+            }
+
             annoyingBeepOscillator = ctx.createOscillator();
             const gain = ctx.createGain();
 
@@ -902,8 +907,8 @@
             annoyingBeepOscillator.connect(gain);
             gain.connect(ctx.destination);
 
-            // 🛑 THE MAGIC: Start playing at 'Current Time + 10 seconds'
-            annoyingBeepOscillator.start(ctx.currentTime + 10);
+            // 🛑 THE MAGIC: Start playing at 'Current Time + 5 seconds'
+            annoyingBeepOscillator.start(ctx.currentTime + 5);
             
         } catch (e) { console.error("Audio schedule failed", e); }
     }

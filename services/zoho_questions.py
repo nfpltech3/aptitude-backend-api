@@ -8,7 +8,7 @@ from services.zoho_auth import get_access_token, refresh_access_token
 BASE = "https://creator.zoho.in/api/v2"
 
 CACHE_FILE = "questions_cache.json"
-CACHE_DURATION = 86400 # 24 hours (Fetch once a day)
+CACHE_DURATION = 0 # 24 hours (Fetch once a day)
 
 def fetch_all_zoho_questions():
     # 1. Try Loading from File First
