@@ -21,7 +21,7 @@ def get_headers():
         "Content-Type": "application/json"
     }
 
-def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, answers_list=None, has_dept_test):
+def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has_dept_test, answers_list=None):
     """
     Updates Zoho with Score, Status, and a Topic-Wise HTML Transcript.
     """
@@ -43,12 +43,10 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, ans
     if answers_list:
         for ans in answers_list:
             topic = ans.get('topic', 'General')
-            # Ensure marks are treated as integers for calculation
-            awarded = 0
             try:
                 awarded = int(ans.get('marks_awarded', 0))
             except (ValueError, TypeError):
-                awarded = 0 # Handle "Manual" or None cases
+                awarded = 0
             
             if topic == "Aptitude":
                 apt_total += awarded
