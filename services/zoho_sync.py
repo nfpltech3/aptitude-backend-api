@@ -21,7 +21,7 @@ def get_headers():
         "Content-Type": "application/json"
     }
 
-def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, answers_list=None):
+def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, answers_list=None, has_dept_test):
     """
     Updates Zoho with Score, Status, and a Topic-Wise HTML Transcript.
     """
@@ -34,10 +34,33 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, ans
         # It's a datetime object, format it
         deadline_time = scheduled_end_time.strftime(zoho_date_fmt)
 
-    # --- 1. PREPARE TRANSCRIPT HTML ---
-    transcript_html = "<h3>📄 Candidate Test Transcript</h3>"
+    # --- 1. CALCULATE SECTIONAL SCORES ---
+    apt_total = 0
+    num_total = 0
+    vrb_total = 0
+    dept_total = 0
+
+    if answers_list:
+        for ans in answers_list:
+            topic = ans.get('topic', 'General')
+            # Ensure marks are treated as integers for calculation
+            awarded = 0
+            try:
+                awarded = int(ans.get('marks_awarded', 0))
+            except (ValueError, TypeError):
+                awarded = 0 # Handle "Manual" or None cases
+            
+            if topic == "Aptitude":
+                apt_total += awarded
+            elif topic == "Numerical":
+                num_total += awarded
+            elif topic == "Verbal":
+                vrb_total += awarded
+            elif topic == "Departmental":
+                dept_total += awarded
     
-    # Track Topics for Grouping
+    # --- 2. PREPARE TRANSCRIPT HTML ---
+    transcript_html = "<h3>📄 Candidate Test Transcript</h3>"
     current_topic = None
     
     if answers_list:
@@ -46,11 +69,9 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, ans
             ans_text = ans.get('answer_text', '')
             q_type = ans.get('question_type', 'MCQ')
             topic = ans.get('topic', 'General')
-
             awarded = ans.get('marks_awarded', 0)
             max_marks = ans.get('max_marks', 1)
 
-            # --- A. INSERT TOPIC HEADER IF CHANGED ---
             if topic != current_topic:
                 current_topic = topic
                 transcript_html += f"""
@@ -59,27 +80,21 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, ans
                 </div>
                 """
 
-            # --- B. SCORE DISPLAY ---
             if awarded == "Manual":
                 score_display = "<span style='color:orange; font-weight:bold;'>Pending Review</span>"
                 bg_color = "#fffbf0" 
             else:
                 score_display = f"<b>{awarded} / {max_marks}</b>"
-                bg_color = "#e6fffa" if awarded == max_marks else "#fff5f5"
+                bg_color = "#e6fffa" if str(awarded) == str(max_marks) else "#fff5f5"
 
             # --- C. BUILD QUESTION CARD ---
             transcript_html += f"<div style='margin-bottom:15px; border:1px solid #eee; padding:10px; border-radius:5px;'>"
             
-            # Header line: Q# - Type - Score
             transcript_html += f"<div style='display:flex; justify-content:space-between; margin-bottom:5px;'>"
             transcript_html += f"   <span style='font-weight:bold; color:#555;'>Q{i}: {q_type}</span>"
             transcript_html += f"   <span style='background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;'>Marks: {score_display}</span>"
             transcript_html += f"</div>"
-
-            # Question Body
             transcript_html += f"<div style='margin-bottom:8px; color:#222; font-size:14px;'>{q_text}</div>"
-            
-            # Answer Box
             transcript_html += f"<div style='background-color:{bg_color}; padding:8px; border-left:3px solid #ccc; font-size:13px;'>"
             transcript_html += f"<b>Student Answer:</b> {ans_text}"
             transcript_html += "</div></div>"
@@ -93,12 +108,17 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, ans
         "data": {
             "Test_Status": status,
             "Total_Score": mcq_score,
+            "Aptitude_Score": apt_total,
+            "Numerical_Score": num_total,
+            "Verbal_Score": vrb_total,
+            "Dept_Score": dept_total if has_dept_test == "Yes" else None,
+            "Recruitment_Stage": "Test",
             "Token_Status": "Invalid",
             "Submitted_On": actual_submission_time,
             "Test_End_Time": deadline_time,
             "Test_Transcript": transcript_html 
         }
-    }   
+    }
     
     headers = get_headers()
     res = requests.patch(url, headers=headers, json=payload)

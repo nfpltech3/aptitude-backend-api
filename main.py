@@ -426,7 +426,8 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         final_score,
         zoho_status,
         time_payload,
-        answers_payload
+        answers_payload,
+        session.has_department_test
     )
 
     return {"status": session.status, "score": final_score}
