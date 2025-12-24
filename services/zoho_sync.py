@@ -39,10 +39,16 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     num_total = 0
     vrb_total = 0
     dept_total = 0
+    total_max_marks = 0
 
     if answers_list:
         for ans in answers_list:
             topic = ans.get('topic', 'General')
+            try:
+                total_max_marks += int(ans.get('max_marks', 1))
+            except:
+                total_max_marks += 1
+                
             try:
                 awarded = int(ans.get('marks_awarded', 0))
             except (ValueError, TypeError):
@@ -69,7 +75,6 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
             topic = ans.get('topic', 'General')
             awarded = ans.get('marks_awarded', 0)
             max_marks = ans.get('max_marks', 1)
-            total_max_marks += int(ans.get('max_marks', 1))
 
             if topic != current_topic:
                 current_topic = topic
