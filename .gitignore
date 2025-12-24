@@ -181,3 +181,7 @@ cython_debug/
 .cursorindexingignore
 
 node_modules
+capacitor.config.json
+package-lock.json
+package.json
+www\index.html

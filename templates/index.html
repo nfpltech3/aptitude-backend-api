@@ -370,24 +370,28 @@
     </div>
 
 <script>
-    // This runs immediately when the Test Page loads
-    document.addEventListener("DOMContentLoaded", function() {
-        // 1. Get the token from the URL or template variable
-        // (Assuming your URL is /start-test?token=XYZ)
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
 
-        // 2. Tell the Android App to save it!
-        if (token && window.AndroidInterface && window.AndroidInterface.loginSuccess) {
-            window.AndroidInterface.loginSuccess(token);
-        }
-    });
-    
+    const jinjaName = "{{ candidate_name|default('Candidate', true) }}";
+
     let timerInterval = null;
     let timeRemaining = 0;
     let warningCount = parseInt(localStorage.getItem(`warnings_${token}`) || "0");
     const MAX_WARNINGS = 3;
     let isSubmitting = false;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        if(jinjaName) {
+            document.getElementById('welcome-msg').innerText = `Welcome, ${jinjaName}`;
+        }
+
+        if (token && window.AndroidInterface && window.AndroidInterface.loginSuccess) {
+            window.AndroidInterface.loginSuccess(token);
+        }
+
+        init();
+    });
 
     // Tracking Variables
     let lastViolationTime = 0;
@@ -399,7 +403,11 @@
 
     // --- 1. INITIALIZATION ---
     async function init() {
-        // UI Setup
+        if (!token) {
+            document.getElementById('loading-msg').innerText = "Error: Invalid Token Link";
+            return;
+        }
+
         if(warningCount > 0) {
             document.getElementById("warn-count").innerText = warningCount;
             document.getElementById("warning-box").style.display = "block";
@@ -407,6 +415,14 @@
 
         try {
             const res = await fetch(`https://aptitude-backend-b6ir.onrender.com/api/check-token?token=${token}`);
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                document.getElementById('welcome-msg').innerText = "Error";
+                document.getElementById('loading-msg').innerText = errorData.detail || "Verification failed";
+                return;
+            }
+
             const data = await res.json();
 
             if (data.status === "Submitted" || data.status === "Auto-Submitted") {
@@ -414,39 +430,24 @@
                 return;
             }
 
-            if (!res.ok) {
-                document.getElementById('welcome-msg').innerText = "Error";
-                document.getElementById('loading-msg').innerText = data.detail || "Invalid Link";
-                return;
-            }
+            // Update Name from the API response
+            document.getElementById('welcome-msg').innerText = `Welcome, ${data.name}`;
+            document.getElementById('loading-msg').classList.add('hidden');
+            document.getElementById('start-btn').classList.remove('hidden');
 
-            // 2. Handle Resuming
             if (data.status === "Resuming") {
-                
                 const isMyTest = localStorage.getItem("test_active_" + token);
-
                 if (isMyTest === "true") {
-                    console.log("Valid Refresh Detected. Resuming...");
                     beginTest(); 
                 } else {
-                    document.body.innerHTML = `
-                        <div style="text-align:center; padding:50px; color:#d9534f;">
-                            <h1>🚫 Access Denied</h1>
-                            <p>This test is currently running on another device or browser.</p>
-                            <p>Simultaneous logins are not permitted.</p>
-                        </div>
-                    `;
+                    document.body.innerHTML = "<div style='text-align:center; padding:50px;'><h1>🚫 Access Denied</h1><p>Active on another device.</p></div>";
                 }
-            } else {
-                // 3. New User
-                document.getElementById('welcome-msg').innerText = `Welcome, ${data.name}`;
-                document.getElementById('loading-msg').classList.add('hidden');
-                document.getElementById('start-btn').classList.remove('hidden');
             }
-
-        } catch (err) { console.error(err); }
+        } catch (err) { 
+            console.error(err); 
+            document.getElementById('loading-msg').innerText = "Connection error. Please check your internet.";
+        }
     }
-
 
     // --- 2. START TEST LOGIC ---
     async function beginTest() {
@@ -1128,7 +1129,6 @@ function renderQuestions(questions, savedAnswers) {
         }
     });
 
-    init();
 </script>
 </body>
 </html>
