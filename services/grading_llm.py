@@ -11,20 +11,37 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
     
     # Define a robust prompt for grading
     prompt = f"""
-    Compare the 'Student Answer' against the 'Reference Answer'.
-    Reference Answer: {reference_ans}
-    Student Answer: {user_ans}
-    
-    Grading Rules:
-    1. If the meaning matches, mark it as Correct.
-    2. Ignore minor spelling mistakes or typos (e.g., 'rahil' instead of 'rahul').
-    3. Provide the score as an integer between 0 and {max_marks}.
-    
-    Response format: ONLY return a JSON object like {{"score": <integer>}}
+    You are grading an objective aptitude exam answer.
+
+    STRICT RULES (DO NOT VIOLATE):
+    - The question has ONE objectively correct answer.
+    - Focus on the FINAL ANSWER or CONCLUSION.
+    - Ignore spelling mistakes, unit formatting, or minor language differences.
+    - Accept answers written in English, Marathi, or mixed language.
+    - Accept numerically equivalent answers (e.g., 12, ₹12, 12 rupees).
+    - Do NOT award marks for correct method if final answer is wrong.
+    - Do NOT guess intent.
+    - If the final answer is missing, unclear, or incorrect → score 0.
+    - Be strict like a competitive exam evaluator.
+
+    Reference Answer (Correct Final Answer):
+    {reference_ans}
+
+    Student Answer:
+    {user_ans}
+
+    Task:
+    Check whether the student's final answer is correct.
+
+    Scoring:
+    - Give FULL marks ({max_marks}) ONLY if the final answer is correct.
+    - Otherwise give 0.
+
+    Return ONLY a JSON object in this exact format:
+    {{"score": <integer>}}
     """
-    
+
     try:
-        # Generate chat completion
         chat_completion = client.chat.completions.create(
             messages=[
                 {
@@ -36,8 +53,8 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
                     "content": prompt,
                 }
             ],
-            model="llama-3.3-70b-versatile", # High-speed production model
-            response_format={"type": "json_object"} # Force JSON mode
+            model="llama-3.3-70b-versatile",
+            response_format={"type": "json_object"}
         )
         
         # Parse result
