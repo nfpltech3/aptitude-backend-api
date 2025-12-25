@@ -38,6 +38,7 @@ def calculate_score(session: TestSession, db: Session):
         q_id = str(ans.question_id)
         u_ans = ans.answer_text
         current_q_score = 0
+        is_correct = False
         
         if q_id in grading_key:
             q_data = grading_key[q_id]
@@ -48,18 +49,17 @@ def calculate_score(session: TestSession, db: Session):
             if q_type == "Long Descriptive":
                 score_breakdown[q_id] = "Manual"
                 continue
-            
-            is_correct = False
-            
+                        
             if q_type == "MCQ":
                 correct_opt = q_data.get("correct_mcq")
                 if check_match(u_ans, correct_opt):
                     is_correct = True
+                    current_q_score = max_marks
                     
             elif q_type == "Short Descriptive":
                 correct_text_raw = str(q_data.get("correct_desc", ""))
-                llm_score = get_llm_grade(u_ans, correct_text_raw, max_marks)
 
+                llm_score = get_llm_grade(u_ans, correct_text_raw, max_marks)
                 if llm_score > 0:
                     is_correct = True
                     current_q_score = llm_score
