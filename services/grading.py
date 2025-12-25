@@ -29,10 +29,15 @@ def calculate_score(session: TestSession, db: Session):
     grading_key = session.grading_cache 
     
     total_score = 0
+    total_possible = 0
     score_breakdown = {}
 
     if not grading_key:
-        return 0, {} 
+        return 0, {}
+    
+    # Calculate total marks possible
+    for q_id, q_data in grading_key.items():
+        total_possible += int(q_data.get("max_marks", 1))
     
     for ans in user_answers:
         q_id = str(ans.question_id)
@@ -82,4 +87,4 @@ def calculate_score(session: TestSession, db: Session):
             score_breakdown[q_id] = current_q_score
 
     print(f"--- 🏆 AUTOMATED SCORE: {total_score} (Excluding Manual Questions) ---\n")
-    return total_score, score_breakdown
+    return total_score, score_breakdown, total_possible

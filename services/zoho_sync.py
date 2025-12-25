@@ -21,7 +21,7 @@ def get_headers():
         "Content-Type": "application/json"
     }
 
-def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has_dept_test, answers_list=None):
+def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has_dept_test, total_possible_marks, answers_list=None):
     """
     Updates Zoho with Score, Status, and a Topic-Wise HTML Transcript.
     """
@@ -39,15 +39,10 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     num_total = 0
     vrb_total = 0
     dept_total = 0
-    total_max_marks = 0
 
     if answers_list:
         for ans in answers_list:
             topic = ans.get('topic', 'General')
-            try:
-                total_max_marks += int(ans.get('max_marks', 1))
-            except:
-                total_max_marks += 1
                 
             try:
                 awarded = int(ans.get('marks_awarded', 0))
@@ -112,7 +107,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
         "data": {
             "Test_Status": status,
             "Total_Score": mcq_score,
-            "Max_Possible_Marks": total_max_marks,
+            "Max_Possible_Marks": total_possible_marks,
             "Aptitude_Score": apt_total,
             "Numerical_Score": num_total,
             "Verbal_Score": vrb_total,

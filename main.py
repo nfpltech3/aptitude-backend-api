@@ -386,7 +386,7 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         session.submitted_at = now_ist
     
     # 2. Calculate Score (MCQ)
-    final_score, score_breakdown = calculate_score(session, db)
+    final_score, score_breakdown, total_possible = calculate_score(session, db)
     session.total_score = final_score
 
     db.commit()
@@ -427,7 +427,8 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         zoho_status,
         time_payload,
         answers_payload,
-        session.has_department_test
+        session.has_department_test,
+        total_possible
     )
 
     return {"status": session.status, "score": final_score}
