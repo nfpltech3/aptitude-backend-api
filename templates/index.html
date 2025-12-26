@@ -614,7 +614,7 @@
                 }
 
                 // 2. Calculate Penalty
-                if (timeAway < 5000) {
+                if (timeAway < 4000) {
                 // It was a short switch. Increment the counter.
                     shortSwitchCount++;
                     console.log("Short Switch Detected. Count:", shortSwitchCount);
@@ -707,17 +707,36 @@
             }
         });
 
-        // E. AGGRESSIVE FOCUS POLLING (Overlays)
-        // Check focus every 1 second
+        // for assistant prevention
+
+        let focusLostTime = null; // Track when focus was first lost
+
         setInterval(() => {
             if (testHasStarted && !isSubmitting) {
-                // If the Android App says it doesn't have focus, but the browser is "visible"
-                // It means an overlay (Assistant/Sidebar) is active.
-                if (window.AndroidInterface && !window.AndroidInterface.hasFocus()) {
-                    attemptViolation("System Overlay (Assistant) active for too long");
+                if (window.AndroidInterface && typeof window.AndroidInterface.hasFocus === 'function') {
+                    
+                    if (!window.AndroidInterface.hasFocus()) {
+                        // 1. If focus is lost, record the start time if not already tracked
+                        if (!focusLostTime) {
+                            focusLostTime = Date.now();
+                        }
+
+                        // 2. Calculate how long focus has been gone
+                        const durationAway = Date.now() - focusLostTime;
+
+                        // 3. Only trigger violation if they are away for more than 4 seconds (4000ms)
+                        if (durationAway > 4000) {
+                            console.log("Proctoring Alert: Focus lost for > 4s.");
+                            attemptViolation("System Overlay (Assistant/Sidebar) active for too long");
+                            focusLostTime = null; // Reset after triggering
+                        }
+                    } else {
+                        // 4. If focus is regained, reset the timer
+                        focusLostTime = null;
+                    }
                 }
             }
-        }, 2000);
+        }, 1000); // Check every 1 second for better precision
 
         // F. SCREENSHOT DEFENSE (Clipboard Wipe Only)
         document.addEventListener('keyup', (e) => {
