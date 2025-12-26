@@ -3,9 +3,6 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
 from database import Base
 from services.timer import get_ist_time
 
-question_cache = Column(JSON)
-grading_cache = Column(JSON)
-
 class TestSession(Base):
     __tablename__ = "test_sessions"
 
@@ -31,7 +28,7 @@ class Answer(Base):
     __tablename__ = "answers"
 
     id = Column(Integer, primary_key=True)
-    session_id = Column(Integer, ForeignKey("test_sessions.id"))
+    session_id = Column(Integer, ForeignKey("test_sessions.id", ondelete="CASCADE"))
     question_id = Column(String)
     answer_text = Column(Text)
     saved_at = Column(DateTime, default=get_ist_time)
