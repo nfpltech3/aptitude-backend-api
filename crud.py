@@ -29,6 +29,7 @@ def create_placeholder_session(db: Session, token: str, zoho_id: str, duration_m
         status="Allocated",
         submission_type="Pending",
         total_score=0,
+        violation_count=0,
         duration_minutes=duration_mins,
         position_name=position_name,
         has_department_test=has_dept_test
@@ -42,24 +43,6 @@ def create_placeholder_session(db: Session, token: str, zoho_id: str, duration_m
         db.rollback()
         # Fallback in case of race condition: try fetching again
         return get_session_by_token(db, token)
-
-def create_session(db: Session, token: str, zoho_id: str, duration_mins: int):
-    now_ist = get_ist_time()
-    # Use duration from Zoho (default to 40 if missing)
-    duration = duration_mins if duration_mins else 40
-    
-    session = TestSession(
-        token=token,
-        candidate_id=zoho_id,
-        start_time=now_ist,
-        end_time=now_ist + timedelta(minutes=duration),
-        status="In-Progress",
-        total_score=0
-    )
-    db.add(session)
-    db.commit()
-    db.refresh(session)
-    return session
 
 def start_session_timer(db: Session, session: TestSession, duration_mins: int):
     """Actually starts the timer for an Allocated session."""
@@ -76,8 +59,10 @@ def start_session_timer(db: Session, session: TestSession, duration_mins: int):
     return session
 
 def increment_violation(db: Session, session_id: int):
-    session = db.query(models.TestSession).filter(models.TestSession.id == session_id).first()
+    session = db.query(TestSession).filter(TestSession.id == session_id).first()
     if session:
-        session.violation_count += 1
+        session.violation_count = (session.violation_count or 0) + 1
         db.commit()
-    return session.violation_count
+        db.refresh(session)
+        return session.violation_count
+    return 0
