@@ -297,6 +297,20 @@
                 font-size: 20px;
             }
         }
+
+        /* Prevents text selection across the entire app */
+        * {
+            -webkit-user-select: none;  /* Chrome, Safari, Opera */
+            -moz-user-select: none;     /* Firefox */
+            -ms-user-select: none;      /* IE/Edge */
+            user-select: none;          /* Standard */
+        }
+
+        /* Re-enable selection ONLY for textareas so candidates can still type their answers */
+        textarea, input[type="text"] {
+            -webkit-user-select: text;
+            user-select: text;
+        }
     </style>
 </head>
 <body>
@@ -694,13 +708,13 @@
         });
 
         // E. AGGRESSIVE FOCUS POLLING (Overlays)
+        // Check focus every 1 second
         setInterval(() => {
-            if (!isSubmitting && document.visibilityState === 'visible') {
-                const timeSinceVisible = Date.now() - lastVisibleTime;
-                if (timeSinceVisible < 3000) return;
-
-                if (!document.hasFocus()) {
-                    attemptViolation("System Overlay Detected");
+            if (testHasStarted && !isSubmitting) {
+                // If the Android App says it doesn't have focus, but the browser is "visible"
+                // It means an overlay (Assistant/Sidebar) is active.
+                if (window.AndroidInterface && !window.AndroidInterface.hasFocus()) {
+                    attemptViolation("System Overlay (Assistant) active for too long");
                 }
             }
         }, 2000);

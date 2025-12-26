@@ -22,6 +22,7 @@ class TestSession(Base):
     duration_minutes = Column(Integer, default=40)
     position_name = Column(String, nullable=True)
     has_department_test = Column(String, default="No")
+    violation_count = Column(Integer, default=0)
     
     question_cache = Column(JSON, nullable=True)
     grading_cache = Column(JSON, nullable=True)

@@ -139,20 +139,15 @@ def record_violation(data: ViolationRequest, db: Session = Depends(get_db)):
     """
     Logs proctoring violations sent from the frontend.
     """
-    # 1. Fetch the session
     session = crud.get_session_by_token(db, data.token)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # 2. Log it (Print to console or save to a file/DB)
-    # Ideally, you would have a Violation table, but for now, printing is enough for testing.
-    print(f"⚠️ [VIOLATION] Candidate: {session.candidate_id} | Reason: {data.reason}")
+    new_count = crud.increment_violation(db, session.id)
 
-    # Optional: You could save this to a text file if you want a permanent record
-    # with open("violations.log", "a") as f:
-    #     f.write(f"{get_ist_time()} - {session.candidate_id} - {data.reason}\n")
+    print(f"⚠️ [VIOLATION] Candidate: {session.candidate_name} | Total: {new_count} | Reason: {data.reason}")
 
-    return {"status": "logged"}
+    return {"status": "logged", "current_violations": new_count}
 
 @app.post("/api/start-test")
 def start_test_session(data: dict, db: Session = Depends(get_db)):
@@ -428,7 +423,8 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         time_payload,
         answers_payload,
         session.has_department_test,
-        total_possible
+        total_possible,
+        session.violation_count
     )
 
     return {"status": session.status, "score": final_score}

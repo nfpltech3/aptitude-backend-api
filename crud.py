@@ -74,3 +74,10 @@ def start_session_timer(db: Session, session: TestSession, duration_mins: int):
     db.commit()
     db.refresh(session)
     return session
+
+def increment_violation(db: Session, session_id: int):
+    session = db.query(models.TestSession).filter(models.TestSession.id == session_id).first()
+    if session:
+        session.violation_count += 1
+        db.commit()
+    return session.violation_count

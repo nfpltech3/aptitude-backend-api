@@ -21,7 +21,7 @@ def get_headers():
         "Content-Type": "application/json"
     }
 
-def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has_dept_test, total_possible_marks, answers_list=None):
+def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has_dept_test, total_possible_marks, violations, answers_list=None):
     """
     Updates Zoho with Score, Status, and a Topic-Wise HTML Transcript.
     """
@@ -112,6 +112,8 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
             "Numerical_Score": num_total,
             "Verbal_Score": vrb_total,
             "Dept_Score": dept_total if has_dept_test == "Yes" else None,
+            "Proctoring_Violations": violations,
+            "Suspicious_Activity": "Yes" if violations > 0 else "No",
             "Recruitment_Stage": "Test",
             "Token_Status": "Invalid",
             "Submitted_On": actual_submission_time,
