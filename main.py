@@ -218,21 +218,17 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                 "max_marks": int(q.get("Max_Marks", 1) or 1)
             })
 
-        # C. Select Questions based on Blueprint
-        selected_questions = []
-        blueprint = {"Aptitude": 5, "Numerical": 5, "Verbal": 5}
-        
-        for topic, count in blueprint.items():
-            qs_in_topic = [q for q in all_questions_clean if q["topic"] == topic]
-            if len(qs_in_topic) <= count:
-                selected_questions.extend(qs_in_topic)
-            else:
-                selected_questions.extend(random.sample(qs_in_topic, count))
+        # C. Select Questions
+        all_eligible_questions = []
 
+        # 1. select aptitude, numerical and verbal ques
+        standard_topics = ["Aptitude", "Numerical", "Verbal"]
+        for q in all_questions_clean:
+            if q["topic"] in standard_topics:
+                all_eligible_questions.append(q)
+        
         # -- Departmental Logic --
         if session.has_department_test == "Yes":
-            dept_qs = []
-            
             # Use saved position name
             c_pos = (session.position_name or "").lower()
             
@@ -242,16 +238,17 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                         q_tag = q["sub_topic"].lower()
                         # Fuzzy match
                         if (q_tag in c_pos) or (c_pos in q_tag):
-                            dept_qs.append(q)
-            
-            if len(dept_qs) <= 10:
-                selected_questions.extend(dept_qs)
-            else:
-                selected_questions.extend(random.sample(dept_qs, 10))
+                            all_eligible_questions.append(q)
 
-        # D. Sort
+        # Shuffle the entire pool initially
+        random.shuffle(all_eligible_questions)
+
+        # D. Sort by Topic Priority
         topic_priority = {"Aptitude": 1, "Numerical": 2, "Verbal": 3, "Departmental": 4}
-        selected_questions.sort(key=lambda q: topic_priority.get(q["topic"], 99))
+        selected_questions = sorted(
+            all_eligible_questions, 
+            key=lambda q: topic_priority.get(q["topic"], 99)
+        )
 
         # E. Prepare Cache (Frontend & Grading)
         safe_cache = []
