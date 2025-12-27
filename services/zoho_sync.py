@@ -66,6 +66,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
         for i, ans in enumerate(answers_list, 1):
             q_text = ans.get('question_text', 'Question ID: ' + str(ans['question_id']))
             ans_text = ans.get('answer_text', '')
+            correct_ans = ans.get('correct_answer', 'N/A')
             q_type = ans.get('question_type', 'MCQ')
             topic = ans.get('topic', 'General')
             awarded = ans.get('marks_awarded', 0)
@@ -96,7 +97,14 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
             transcript_html += f"<div style='margin-bottom:8px; color:#222; font-size:14px;'>{q_text}</div>"
             transcript_html += f"<div style='background-color:{bg_color}; padding:8px; border-left:3px solid #ccc; font-size:13px;'>"
             transcript_html += f"<b>Student Answer:</b> {ans_text}"
-            transcript_html += "</div></div>"
+            transcript_html += "</div>"
+
+            if str(awarded) != str(max_marks):
+                transcript_html += f"<div style='background-color:#f0f7ff; padding:8px; border-left:3px solid #007bff; font-size:13px; color:#0056b3;'>"
+                transcript_html += f"<b>Correct Answer:</b> {correct_ans}"
+                transcript_html += "</div>"
+
+            transcript_html += "</div>"
     else:
         transcript_html += "<p>No answers recorded.</p>"
 

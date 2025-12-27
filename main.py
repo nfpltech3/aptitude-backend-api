@@ -397,6 +397,13 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
 
         awarded = score_breakdown.get(q_id, 0)
         max_m = q_grade_data.get("max_marks", 1)
+
+        # DETERMINE CORRECT ANSWER TEXT
+        # For MCQs, use the stored correct text; for Descriptive, use the guide answer
+        is_mcq = q_data.get("type") == "MCQ"
+        correct_val = q_grade_data.get("correct_mcq") if is_mcq else q_grade_data.get("correct_desc")
+        if not correct_val:
+            correct_val = "Not specified"
         
         answers_payload.append({
             "question_id": q_id,
@@ -404,6 +411,7 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
             "question_type": q_data.get("type", "MCQ"),
             "topic": q_data.get("topic", "General"),
             "answer_text": a.answer_text,
+            "correct_answer": correct_val,
             "marks_awarded": awarded, 
             "max_marks": max_m
         })
