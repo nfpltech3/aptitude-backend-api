@@ -59,7 +59,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
                 dept_total += awarded
     
     # --- 2. PREPARE TRANSCRIPT HTML ---
-    transcript_html = "<h3>📄 Candidate Test Transcript</h3>"
+    transcript_html = "<h3 style='color: #333; border-bottom: 1px solid #ccc; padding-bottom: 10px;'>Assessment Performance Summary</h3>"
     current_topic = None
     
     if answers_list:
