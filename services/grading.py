@@ -56,8 +56,9 @@ def calculate_score(session: TestSession, db: Session):
                 continue
                         
             if q_type == "MCQ":
-                correct_opt = q_data.get("correct_mcq")
-                if check_match(u_ans, correct_opt):
+                correct_letter = q_data.get("correct_mcq")
+
+                if str(u_ans).strip().upper() == str(correct_letter).strip().upper():
                     is_correct = True
                     current_q_score = max_marks
                     
