@@ -262,7 +262,8 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                 "text": q["text"],
                 "type": q["type"],
                 "topic": q["topic"],
-                "options": q["options"]
+                "options": q["options"],
+                "max_marks": q["max_marks"]
             })
             
             grading_cache[q_id] = {

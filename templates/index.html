@@ -1136,8 +1136,13 @@ function renderQuestions(questions, savedAnswers) {
         
         htmlContent += `
             <div class="question-card" style="background:white; border-left:5px solid #007bff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-                <div class="question-text" style="margin-bottom:15px; font-size:1.1em; color:#333;">
-                    <strong>Q${index + 1}.</strong> ${q.text}
+                <div class="question-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+                    <div class="question-text" style="font-size:1.1em; color:#333; padding-right: 10px;">
+                        <strong>Q${index + 1}.</strong> ${q.text}
+                    </div>
+                    <div class="marks-display" style="background:#f8f9fa; color:#6c757d; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:600; border:1px solid #dee2e6; white-space:nowrap;">
+                        ${q.max_marks || 1} Marks
+                    </div>
                 </div>
                 ${inputHtml}
             </div>`;
