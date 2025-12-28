@@ -34,29 +34,28 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
         # It's a datetime object, format it
         deadline_time = scheduled_end_time.strftime(zoho_date_fmt)
 
-    # --- 1. CALCULATE SECTIONAL SCORES ---
-    apt_total = 0
-    num_total = 0
-    vrb_total = 0
-    dept_total = 0
+    # --- 1. DYNAMIC SECTIONAL AGGREGATION ---
+    # This dictionary will store: {"Topic Name": {"awarded": X, "max": Y}}
+    sectional_data = {}
 
     if answers_list:
         for ans in answers_list:
             topic = ans.get('topic', 'General')
-                
             try:
                 awarded = int(ans.get('marks_awarded', 0))
+                max_q_marks = int(ans.get('max_marks', 1))
             except (ValueError, TypeError):
                 awarded = 0
+                max_q_marks = 1
+                
+            if topic == "Departmental" and has_dept_test != "Yes":
+                continue
             
-            if topic == "Aptitude":
-                apt_total += awarded
-            elif topic == "Numerical":
-                num_total += awarded
-            elif topic == "Verbal":
-                vrb_total += awarded
-            elif topic == "Departmental":
-                dept_total += awarded
+            if topic not in sectional_data:
+                sectional_data[topic] = {"awarded": 0, "max": 0}
+            
+            sectional_data[topic]["awarded"] += awarded
+            sectional_data[topic]["max"] += max_q_marks
     
     # --- 2. PREPARE TRANSCRIPT HTML ---
     transcript_html = "<h3 style='color: #333; border-bottom: 1px solid #ccc; padding-bottom: 10px;'>Assessment Performance Summary</h3>"
@@ -64,21 +63,29 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     
     if answers_list:
         for i, ans in enumerate(answers_list, 1):
+            topic = ans.get('topic', 'General')
+            
+            # Identify current sectional score from our dynamic dictionary
+            sec_score = sectional_data.get(topic, {"awarded": 0, "max": 0})
+            
+            # --- Section Header ---
+            if topic != current_topic:
+                current_topic = topic
+                transcript_html += f"""
+                <div style='margin-top:25px; margin-bottom:15px; border-bottom:2px solid #007bff; padding-bottom:5px; display:flex; justify-content:space-between; align-items:center;'>
+                    <h4 style='color:#007bff; margin:0;'>{current_topic} Section</h4>
+                    <span style='background:#007bff; color:white; padding:2px 10px; border-radius:15px; font-size:13px; font-weight:bold;'>
+                        Section Score: {sec_score['awarded']} / {sec_score['max']}
+                    </span>
+                </div>
+                """
+            
             q_text = ans.get('question_text', 'Question ID: ' + str(ans['question_id']))
             ans_text = ans.get('answer_text', '')
             correct_ans = ans.get('correct_answer', 'N/A')
             q_type = ans.get('question_type', 'MCQ')
-            topic = ans.get('topic', 'General')
             awarded = ans.get('marks_awarded', 0)
             max_marks = ans.get('max_marks', 1)
-
-            if topic != current_topic:
-                current_topic = topic
-                transcript_html += f"""
-                <div style='margin-top:20px; margin-bottom:10px; border-bottom:2px solid #007bff; padding-bottom:5px;'>
-                    <h4 style='color:#007bff; margin:0;'>{current_topic} Section</h4>
-                </div>
-                """
 
             if awarded == "Manual":
                 score_display = "<span style='color:orange; font-weight:bold;'>Pending Review</span>"
@@ -111,24 +118,25 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     # --- 2. SEND TO ZOHO ---
     url = f"{BASE_URL}/report/Candidate_Allocation_Report/{zoho_id}"
     
-    payload = {
-        "data": {
-            "Test_Status": status,
-            "Total_Score": mcq_score,
-            "Max_Possible_Marks": total_possible_marks,
-            "Aptitude_Score": apt_total,
-            "Numerical_Score": num_total,
-            "Verbal_Score": vrb_total,
-            "Dept_Score": dept_total if has_dept_test == "Yes" else None,
-            "Proctoring_Violations": violations,
-            "Suspicious_Activity": "Yes" if violations > 0 else "No",
-            "Recruitment_Stage": "Test",
-            "Token_Status": "Invalid",
-            "Submitted_On": actual_submission_time,
-            "Test_End_Time": deadline_time,
-            "Test_Transcript": transcript_html 
-        }
+    payload_data = {
+        "Test_Status": status,
+        "Total_Score": mcq_score,
+        "Max_Possible_Marks": total_possible_marks,
+        "Proctoring_Violations": violations,
+        "Suspicious_Activity": "Yes" if violations > 0 else "No",
+        "Token_Status": "Invalid",
+        "Submitted_On": actual_submission_time,
+        "Test_End_Time": deadline_time,
+        "Test_Transcript": transcript_html 
     }
+    
+    # Map the dictionary values back to Zoho fields
+    # Note: Ensure your Zoho field names stay consistent (e.g., 'Numerical_Score')
+    for topic, scores in sectional_data.items():
+        field_name = f"{topic.replace(' ', '_')}_Score"
+        payload_data[field_name] = f"{scores['awarded']} / {scores['max']}"
+    
+    payload = {"data": payload_data}
     
     headers = get_headers()
     res = requests.patch(url, headers=headers, json=payload)
@@ -145,9 +153,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     else:
         print(f"Success: Updated Candidate {zoho_id} with Score & Transcript.")
 
-
 def push_candidate_answers(candidate_zoho_id, answers_list):
-    # Target: The FORM (because we are creating NEW rows)
     form_link_name = "Candidate_Test_Form"
     
     url = f"{BASE_URL}/form/{form_link_name}"
@@ -167,7 +173,6 @@ def push_candidate_answers(candidate_zoho_id, answers_list):
     headers = get_headers()
     res = requests.post(url, headers=headers, json=payload)
     
-    # --- RETRY LOGIC ---
     if res.status_code == 401:
         print("Token expired during Answer Push. Refreshing...")
         new_token = refresh_access_token()
@@ -175,7 +180,6 @@ def push_candidate_answers(candidate_zoho_id, answers_list):
         res = requests.post(url, headers=headers, json=payload)
             
     if res.status_code != 200:
-        # Code 3000 means Success in Zoho V2 POST requests
         response_json = res.json()
         if response_json.get("code") == 3000:
             print(f"Success: Pushed {len(records)} answers.")
@@ -190,7 +194,6 @@ def mark_test_started(zoho_id):
     """
     url = f"{BASE_URL}/report/Candidate_Allocation_Report/{zoho_id}"
     
-    # Zoho Date Format: dd-MMM-yyyy HH:mm:ss
     start_time_str = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
     
     payload = {
@@ -204,7 +207,6 @@ def mark_test_started(zoho_id):
     try:
         res = requests.patch(url, headers=headers, json=payload)
         
-        # Retry logic if token expired
         if res.status_code == 401:
             new_token = refresh_access_token()
             headers["Authorization"] = f"Zoho-oauthtoken {new_token}"

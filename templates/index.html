@@ -410,6 +410,18 @@
     let testHasStarted = false;
 
     document.addEventListener("DOMContentLoaded", function() {
+        // --- 1. KEYBOARD GUARD ---
+        window.isKeyboardAction = false; 
+
+        // Listen for focus leaving input fields or textareas
+        document.addEventListener('focusout', (event) => {
+            if (event.target.tagName === 'TEXTAREA' || event.target.tagName === 'INPUT') {
+                window.isKeyboardAction = true;
+                // Provide a 500ms window for the keyboard UI to close on iOS
+                setTimeout(() => { window.isKeyboardAction = false; }, 500);
+            }
+        });
+
         if(jinjaName) {
             document.getElementById('welcome-msg').innerText = `Welcome, ${jinjaName}`;
         }
@@ -619,8 +631,8 @@
                 const timeAway = Date.now() - lastVisibleTime;
                 lastVisibleTime = Date.now();
 
-                // 1. Auto-Submit if away too long (>30s)
-                if (timeAway > 30000) {
+                // 1. Auto-Submit if away too long (>15s)
+                if (timeAway > 15000) {
                     toggleBlur(true);
                     alert("CRITICAL VIOLATION: You were away for " + Math.round(timeAway/1000) + "s.\n\nTest will now be Auto-Submitted.");
                     toggleBlur(false);
@@ -656,8 +668,11 @@
         window.addEventListener("blur", () => {
             if (isSubmitting) return;
 
-            // We do NOT show the black curtain here (per your request).
-            // We only track if they stay blurred for too long.
+            if (window.isKeyboardAction) {
+                console.log("iOS Keyboard retraction: Violation suppressed.");
+                return; 
+            }
+
             blurTimer = setTimeout(() => {
                 // Only penalize if the window is technically "visible" (e.g. overlay or split screen)
                 if (document.visibilityState === 'visible') {
