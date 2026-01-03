@@ -224,12 +224,7 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
             ]
             
             # Handle Correct Answer Text
-            correct_code = str(q.get("Correct_Answer", "")).strip()
-            correct_text = correct_code
-            if correct_code == "A" and len(opts) > 0: correct_text = opts[0]
-            elif correct_code == "B" and len(opts) > 1: correct_text = opts[1]
-            elif correct_code == "C" and len(opts) > 2: correct_text = opts[2]
-            elif correct_code == "D" and len(opts) > 3: correct_text = opts[3]
+            correct_letter = str(q.get("Correct_Answer", "")).strip().upper()
 
             all_questions_clean.append({
                 "id": str(q.get("ID")),
@@ -238,7 +233,7 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                 "topic": q.get("Topic"),
                 "sub_topic": z_sub,
                 "options": [o for o in opts if o],
-                "correct_mcq": correct_text,
+                "correct_mcq": correct_letter,
                 "correct_desc": q.get("Correct_Descriptive_Answer2", ""),
                 "max_marks": int(q.get("Max_Marks", 1) or 1)
             })

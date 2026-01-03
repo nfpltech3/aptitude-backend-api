@@ -28,6 +28,8 @@ def calculate_score(session: TestSession, db: Session):
     user_answers = db.query(Answer).filter(Answer.session_id == session.id).all() # query answer table for every rec belonging to that session id
     grading_key = session.grading_cache # correct answers
     
+    text_lookup = {str(q["question_id"]): q["text"] for q in session.question_cache}
+    
     total_score = 0
     total_possible = 0
     enriched_answers = []
@@ -36,13 +38,14 @@ def calculate_score(session: TestSession, db: Session):
         return 0, [], 0
     
     # Create a lookup for user answers: {q_id: answer_text}
-    user_ans_map = {str(ans.question_id): ans.answer_text for ans in user_answers}
+    user_ans_map = {str(ans.question_id): str(ans.answer_text).strip().upper() for ans in user_answers}
     
     for q_id, q_data in grading_key.items():
         q_type = q_data.get("type")
         topic = q_data.get("topic", "General")
         max_marks = int(q_data.get("max_marks", 1))
         u_ans = user_ans_map.get(q_id, "")
+        q_text = text_lookup.get(q_id, "Question text not found")
         
         total_possible += max_marks
         current_q_score = 0
@@ -78,6 +81,7 @@ def calculate_score(session: TestSession, db: Session):
         # Prepare for Zoho Transcript & Sectional calculation
         enriched_answers.append({
             "question_id": q_id,
+            "question_text": q_text,
             "topic": topic,
             "question_type": q_type,
             "answer_text": u_ans,
