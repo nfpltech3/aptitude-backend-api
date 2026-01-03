@@ -37,25 +37,23 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     # --- 1. DYNAMIC SECTIONAL AGGREGATION ---
     # This dictionary will store: {"Topic Name": {"awarded": X, "max": Y}}
     sectional_data = {}
+    calculated_total = 0
 
     if answers_list:
         for ans in answers_list:
             topic = ans.get('topic', 'General')
-            try:
-                awarded = int(ans.get('marks_awarded', 0))
-                max_q_marks = int(ans.get('max_marks', 1))
-            except (ValueError, TypeError):
-                awarded = 0
-                max_q_marks = 1
-                
-            if topic == "Departmental" and str(has_dept_test).strip() != "Yes":
-                continue
+            max_q = int(ans.get('max_marks', 0))
             
+            # Logic: If 'Manual', awarded points for calculation is 0
+            raw_awarded = ans.get('marks_awarded', 0)
+            awarded_val = int(raw_awarded) if str(raw_awarded).isdigit() else 0
+
             if topic not in sectional_data:
                 sectional_data[topic] = {"awarded": 0, "max": 0}
             
-            sectional_data[topic]["awarded"] += awarded
-            sectional_data[topic]["max"] += max_q_marks
+            sectional_data[topic]["awarded"] += awarded_val
+            sectional_data[topic]["max"] += max_q
+            calculated_total += awarded_val
     
     # --- 2. PREPARE TRANSCRIPT HTML ---
     transcript_html = "<h3 style='color: #333; border-bottom: 1px solid #ccc; padding-bottom: 10px;'>Assessment Performance Summary</h3>"
@@ -120,8 +118,8 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     
     payload_data = {
         "Test_Status": status,
-        "Total_Score": mcq_score,
-        "Max_Possible_Marks": total_possible_marks,
+        "Total_Score": str(calculated_total),
+        "Max_Possible_Marks": str(total_possible_marks),
         "Proctoring_Violations": violations,
         "Suspicious_Activity": "Yes" if violations > 0 else "No",
         "Token_Status": "Invalid",
@@ -132,9 +130,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     
     # Map the dictionary values back to Zoho fields
     # Note: Ensure your Zoho field names stay consistent (e.g., 'Numerical_Score')
-    calculated_total_score = 0
     for topic, scores in sectional_data.items():
-        calculated_total_score += scores['awarded']
         field_name = f"{topic.replace(' ', '_')}_Score"
         payload_data[field_name] = f"{scores['awarded']} / {scores['max']}"
     

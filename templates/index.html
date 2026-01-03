@@ -700,6 +700,18 @@
             if (violationTimer) clearTimeout(violationTimer);
         });
 
+        window.addEventListener("pagehide", () => {
+            // If the user swipes the browser away entirely
+            if (testHasStarted && !isSubmitting && !isRefreshing) {
+                fetch('/api/record-violation', {
+                    keepalive: true,
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token, reason: "Browser Process Killed/Swiped Away" })
+                });
+            }
+        });
+
         document.addEventListener("keydown", (e) => {
             if(e.key === "F12") { e.preventDefault(); e.stopPropagation(); }
             
@@ -1118,14 +1130,21 @@ function renderQuestions(questions, savedAnswers) {
         let inputHtml = '';
         if (q.type === 'MCQ') {
             inputHtml = `<div class="options">
-                ${q.options.map(opt => {
-                    const isChecked = (savedVal === opt) ? 'checked' : '';
-                    return `<label style="display:block; padding:10px; border:1px solid #eee; margin-bottom:5px; border-radius:4px; cursor:pointer; background:#fafafa;">
-                                <input type="radio" name="q_${q.question_id}" value="${opt}" 
-                                    onchange="saveAnswer('${q.question_id}', this.value)" 
-                                    ${isChecked}> ${opt}
-                            </label>`;
-                }).join('')}
+                ${q.options.map((opt, idx) => {
+                // Convert index 0, 1, 2, 3 to A, B, C, D
+                const letter = String.fromCharCode(65 + idx); 
+                
+                // Check against the saved letter from the database
+                const isChecked = (savedVal === letter) ? 'checked' : ''; 
+                
+                return `
+                    <label style="display:block; padding:12px; border:1px solid #eee; margin-bottom:8px; border-radius:8px; cursor:pointer; background:#fafafa; transition: 0.2s;">
+                        <input type="radio" name="q_${q.question_id}" value="${letter}" 
+                            onchange="saveAnswer('${q.question_id}', this.value)" 
+                            ${isChecked} style="margin-right: 10px;">
+                        <strong>${letter}.</strong> ${opt}
+                    </label>`;
+            }).join('')}
             </div>`;
         } else {
             const valText = savedVal || '';

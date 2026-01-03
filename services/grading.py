@@ -25,8 +25,8 @@ def check_match(user_input: str, correct_answer: str) -> bool:
 def calculate_score(session: TestSession, db: Session):
     print(f"\n--- 📝 START GRADING SESSION {session.id} ---")
 
-    user_answers = db.query(Answer).filter(Answer.session_id == session.id).all()
-    grading_key = session.grading_cache 
+    user_answers = db.query(Answer).filter(Answer.session_id == session.id).all() # query answer table for every rec belonging to that session id
+    grading_key = session.grading_cache # correct answers
     
     total_score = 0
     total_possible = 0
@@ -38,7 +38,6 @@ def calculate_score(session: TestSession, db: Session):
     # Create a lookup for user answers: {q_id: answer_text}
     user_ans_map = {str(ans.question_id): ans.answer_text for ans in user_answers}
     
-    # Calculate total marks possible
     for q_id, q_data in grading_key.items():
         q_type = q_data.get("type")
         topic = q_data.get("topic", "General")
@@ -51,48 +50,41 @@ def calculate_score(session: TestSession, db: Session):
 
         # Skip Manual Grading for Long Answers
         if q_type == "Long Descriptive":
-            current_q_score = 0  # Not auto-graded
             status = "Manual"
         
         elif q_type == "MCQ":
-            # Mapper stores the FULL TEXT in correct_mcq
-            correct_text = q_data.get("correct_mcq")
-            if check_match(u_ans, correct_text):
+            correct_letter = str(q_data.get("correct_mcq", "")).upper()
+            if u_ans == correct_letter:
                 current_q_score = max_marks
                 status = "Correct"
                 total_score += current_q_score
-                        
-            if q_type == "MCQ":
-                correct_letter = q_data.get("correct_mcq")
-
-                if str(u_ans).strip().upper() == str(correct_letter).strip().upper():
-                    is_correct = True
-                    current_q_score = max_marks
                     
-            elif q_type == "Short Descriptive":
-                correct_text_raw = str(q_data.get("correct_desc", ""))
+        elif q_type == "Short Descriptive":
+            correct_text_raw = str(q_data.get("correct_desc", ""))
 
-                llm_score = get_llm_grade(u_ans, correct_text_raw, max_marks)
-                if llm_score > 0:
-                    is_correct = True
-                    current_q_score = llm_score
-                
-                if not is_correct:
-                    possible_answers = [x.strip() for x in correct_text_raw.split('|')]
-                    for valid_opt in possible_answers:
-                        if check_match(u_ans, valid_opt):
-                            is_correct = True
-                            current_q_score = max_marks
-                            break
-        
-            # Assign Marks
-            if is_correct:
-                total_score += current_q_score
-                print(f"   ✅ Q[{q_id}] Correct (+{current_q_score})")
+            llm_score = get_llm_grade(u_ans, correct_text_raw, max_marks)
+            if llm_score > 0:
+                current_q_score = llm_score
+                status = "Correct"
             else:
-                print(f"   ❌ Q[{q_id}] Wrong")
-
-            score_breakdown[q_id] = current_q_score
-
-    print(f"--- 🏆 AUTOMATED SCORE: {total_score} (Excluding Manual Questions) ---\n")
-    return total_score, score_breakdown, total_possible
+                # 2. Fallback to keyword matching
+                possible = [x.strip() for x in correct_text_raw.split('|')]
+                if any(check_match(u_ans, opt) for opt in possible):
+                    current_q_score = max_marks
+                    status = "Correct"
+            
+            total_score += current_q_score
+            
+        # Prepare for Zoho Transcript & Sectional calculation
+        enriched_answers.append({
+            "question_id": q_id,
+            "topic": topic,
+            "question_type": q_type,
+            "answer_text": u_ans,
+            "correct_answer": q_data.get("correct_mcq") if q_type=="MCQ" else q_data.get("correct_desc"),
+            "marks_awarded": status if status == "Manual" else current_q_score,
+            "max_marks": max_marks
+        })
+            
+    print(f"--- 🏆 AUTOMATED SCORE: {total_score} ---\n")
+    return total_score, enriched_answers, total_possible
