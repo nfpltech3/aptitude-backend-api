@@ -37,7 +37,7 @@ def calculate_score(session: TestSession, db: Session):
     
     q_meta_lookup = {str(q["question_id"]): q for q in session.question_cache}
     # Create a lookup for user answers: {q_id: answer_text}
-    user_ans_map = {str(ans.question_id): str(ans.answer_text).strip().upper() for ans in user_answers}
+    user_ans_map = {str(ans.question_id): str(ans.answer_text).strip() for ans in user_answers}
     
     for q_id, q_data in grading_key.items():
         q_type = q_data.get("type")
@@ -101,7 +101,7 @@ def calculate_score(session: TestSession, db: Session):
             "topic": topic,
             "question_type": q_type,
             "answer_text": display_student,
-            "correct_answer": q_data.get("correct_mcq") if q_type=="MCQ" else q_data.get("correct_desc"),
+            "correct_answer": display_correct,
             "marks_awarded": status if status == "Manual" else current_q_score,
             "max_marks": max_marks
         })
