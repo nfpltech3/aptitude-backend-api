@@ -13,24 +13,43 @@ def manual_resync():
         
         print(f"Found {len(unsynced_records)} records to sync...")
 
+        # resync_tool.py (Updated Logic)
         for record in unsynced_records:
             print(f"Syncing {record.candidate_name} (ID: {record.candidate_id})...")
+            
             answers_data = record.grading_cache
 
+            # 1. Handle double-encoding or raw strings
             if isinstance(answers_data, str):
-                answers_data = json.loads(answers_data)
+                try:
+                    answers_data = json.loads(answers_data)
+                    # If it's STILL a string after one load, load it again (double-encoded)
+                    if isinstance(answers_data, str):
+                        answers_data = json.loads(answers_data)
+                except Exception:
+                    answers_data = [] # Fallback to empty list if corrupted
+
+            # 2. Safety check: ensure every item in the list is a dictionary
+            clean_answers = []
+            if isinstance(answers_data, list):
+                for item in answers_data:
+                    if isinstance(item, str):
+                        try:
+                            clean_answers.append(json.loads(item))
+                        except: continue
+                    else:
+                        clean_answers.append(item)
             
-            # 2. Call your existing sync function
-            # Use the data already stored in your Neon database
+            # 3. Call sync function with the clean list
             success = update_candidate_summary(
                 zoho_id=record.candidate_id,
                 mcq_score=record.total_score,
                 status=record.status,
                 scheduled_end_time=record.end_time,
                 has_dept_test=record.has_department_test,
-                total_possible_marks=100, # Adjust as per your logic
+                total_possible_marks=100,
                 violations=record.violation_count,
-                answers_list=answers_data
+                answers_list=clean_answers # Use the cleaned list
             )
 
             if success:
