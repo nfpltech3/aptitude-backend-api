@@ -3,6 +3,7 @@ from database import SessionLocal
 from models import TestSession
 from services.zoho_sync import update_candidate_summary
 import time
+import json
 
 def manual_resync():
     db = SessionLocal()
@@ -14,6 +15,10 @@ def manual_resync():
 
         for record in unsynced_records:
             print(f"Syncing {record.candidate_name} (ID: {record.candidate_id})...")
+            answers_data = record.grading_cache
+
+            if isinstance(answers_data, str):
+                answers_data = json.loads(answers_data)
             
             # 2. Call your existing sync function
             # Use the data already stored in your Neon database
@@ -25,7 +30,7 @@ def manual_resync():
                 has_dept_test=record.has_department_test,
                 total_possible_marks=100, # Adjust as per your logic
                 violations=record.violation_count,
-                answers_list=record.grading_cache # Uses the cache stored in Neon
+                answers_list=answers_data
             )
 
             if success:
