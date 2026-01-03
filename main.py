@@ -68,8 +68,9 @@ def home():
 def check_candidate_token(token: str, db: Session = Depends(get_db)):
     token = token.strip()
 
-    # 1. OPTIMIZED PATH (Check Local DB)
+    # 1. First, check if this specific token exists
     session = crud.get_session_by_token(db, token)
+    
     if session:
         if session.status in ["Submitted", "Auto-Submitted"]:
              return {"status": "Submitted", "name": session.candidate_name}
@@ -83,6 +84,30 @@ def check_candidate_token(token: str, db: Session = Depends(get_db)):
         
         # If Allocated (New), allow entry
         return {"status": "New", "name": session.candidate_name, "instructions": "..."}
+    
+    # 2. If token is NOT found, it might be a "Resent" link
+    if not session:
+        print(f"Token {token} not in DB. Checking Zoho for fresh allocation...")
+        alloc = fetch_candidate_by_token(token)
+        if not alloc:
+            raise HTTPException(status_code=404, detail="Invalid token")
+
+        zoho_id = str(alloc["ID"])
+        
+        # Check if this Zoho ID already has a session with an OLD token
+        existing_user_session = db.query(models.TestSession).filter(
+            models.TestSession.candidate_id == zoho_id
+        ).first()
+
+        if existing_user_session:
+            # BUG FIX: If test is not submitted, update the token to the new one
+            if existing_user_session.status not in ["Submitted", "Auto-Submitted"]:
+                print(f"Updating token for {existing_user_session.candidate_name} to new resent link.")
+                existing_user_session.token = token 
+                db.commit()
+                return {"status": "New", "name": existing_user_session.candidate_name}
+            else:
+                return {"status": "Submitted", "name": existing_user_session.candidate_name}
 
     # 2. FALLBACK PATH (Call Zoho if DB is empty/wiped)
     print(f"⚠️ Session missing for {token}. Attempting Fallback Fetch...")
