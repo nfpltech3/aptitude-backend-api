@@ -8,7 +8,7 @@ def check_match(user_input: str, correct_answer: str) -> bool:
     """Helper: Normalizes text (lowercase, no punctuation) for flexible matching."""
     if not user_input or not correct_answer:
         return False
-        
+
     # Lowercase & Strip
     u = str(user_input).lower().strip()
     c = str(correct_answer).lower().strip()
@@ -30,30 +30,37 @@ def calculate_score(session: TestSession, db: Session):
     
     total_score = 0
     total_possible = 0
-    score_breakdown = {}
+    enriched_answers = []
 
     if not grading_key:
-        return 0, {}
+        return 0, [], 0
+    
+    # Create a lookup for user answers: {q_id: answer_text}
+    user_ans_map = {str(ans.question_id): ans.answer_text for ans in user_answers}
     
     # Calculate total marks possible
     for q_id, q_data in grading_key.items():
-        total_possible += int(q_data.get("max_marks", 1))
-    
-    for ans in user_answers:
-        q_id = str(ans.question_id)
-        u_ans = ans.answer_text
-        current_q_score = 0
-        is_correct = False
+        q_type = q_data.get("type")
+        topic = q_data.get("topic", "General")
+        max_marks = int(q_data.get("max_marks", 1))
+        u_ans = user_ans_map.get(q_id, "")
         
-        if q_id in grading_key:
-            q_data = grading_key[q_id]
-            q_type = q_data.get("type")
-            max_marks = int(q_data.get("max_marks", 1))
+        total_possible += max_marks
+        current_q_score = 0
+        status = "Wrong"
 
-            # Skip Manual Grading for Long Answers
-            if q_type == "Long Descriptive":
-                score_breakdown[q_id] = "Manual"
-                continue
+        # Skip Manual Grading for Long Answers
+        if q_type == "Long Descriptive":
+            current_q_score = 0  # Not auto-graded
+            status = "Manual"
+        
+        elif q_type == "MCQ":
+            # Mapper stores the FULL TEXT in correct_mcq
+            correct_text = q_data.get("correct_mcq")
+            if check_match(u_ans, correct_text):
+                current_q_score = max_marks
+                status = "Correct"
+                total_score += current_q_score
                         
             if q_type == "MCQ":
                 correct_letter = q_data.get("correct_mcq")

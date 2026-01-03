@@ -48,7 +48,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
                 awarded = 0
                 max_q_marks = 1
                 
-            if topic == "Departmental" and has_dept_test != "Yes":
+            if topic == "Departmental" and str(has_dept_test).strip() != "Yes":
                 continue
             
             if topic not in sectional_data:
@@ -132,7 +132,9 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
     
     # Map the dictionary values back to Zoho fields
     # Note: Ensure your Zoho field names stay consistent (e.g., 'Numerical_Score')
+    calculated_total_score = 0
     for topic, scores in sectional_data.items():
+        calculated_total_score += scores['awarded']
         field_name = f"{topic.replace(' ', '_')}_Score"
         payload_data[field_name] = f"{scores['awarded']} / {scores['max']}"
     

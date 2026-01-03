@@ -54,6 +54,7 @@ def sanitize_questions(raw_questions_list):
 
         grading_cache[q_id] = {
             "type": q_type,
+            "topic": q.get("Topic", "General"),
             "max_marks": int(q.get("Max_Marks", 1) or 1), # Handle empty marks safely
             "correct_mcq": correct_mcq_text,  # Now stores "having been" instead of "A"
             "correct_desc": correct_desc
