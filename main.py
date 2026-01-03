@@ -391,8 +391,8 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         raise HTTPException(status_code=404, detail="Invalid token")
 
     # Prevent double submission
-    if session.status != "In-Progress":
-        return {"status": session.status, "message": "Test already submitted"}
+    if session.status not in ["In-Progress", "Started", "Resuming"]:
+        return {"status": session.status, "message": "Test is no longer active"}
 
     # 1. Determine Status
     now_ist = get_ist_time()
@@ -404,47 +404,17 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         session.submitted_at = now_ist
     
     # 2. Calculate Score (MCQ)
-    final_score, score_breakdown, total_possible = calculate_score(session, db)
+    final_score, answers_list, total_possible = calculate_score(session, db)
+    
     session.total_score = final_score
 
     db.commit()
     db.refresh(session)
     
     # 3. Gather Answers for Zoho
-    all_answers = db.query(models.Answer).filter(models.Answer.session_id == session.id).all()
-    q_front_map = {str(q["question_id"]): q for q in session.question_cache}
-    q_grade_map = session.grading_cache
-
-    answers_payload = []
-    for a in all_answers:
-        q_id = str(a.question_id)
-        q_data = q_front_map.get(q_id, {})
-        q_grade_data = q_grade_map.get(q_id, {})
-
-        awarded = score_breakdown.get(q_id, 0)
-        max_m = q_grade_data.get("max_marks", 1)
-
-        # DETERMINE CORRECT ANSWER TEXT
-        # For MCQs, use the stored correct text; for Descriptive, use the guide answer
-        is_mcq = q_data.get("type") == "MCQ"
-        correct_val = q_grade_data.get("correct_mcq") if is_mcq else q_grade_data.get("correct_desc")
-        if not correct_val:
-            correct_val = "Not specified"
-        
-        answers_payload.append({
-            "question_id": q_id,
-            "question_text": q_data.get("text", "Unknown"),
-            "question_type": q_data.get("type", "MCQ"),
-            "topic": q_data.get("topic", "General"),
-            "answer_text": a.answer_text,
-            "correct_answer": correct_val,
-            "marks_awarded": awarded, 
-            "max_marks": max_m
-        })
-    
-    zoho_status = "Submitted"
+    zoho_status = session.status
     time_payload = session.end_time
-
+    
     # 4. RUN SYNC IN BACKGROUND
     background_tasks.add_task(
         perform_zoho_sync,
@@ -452,15 +422,15 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         final_score,
         zoho_status,
         time_payload,
-        answers_payload,
         session.has_department_test,
         total_possible,
-        session.violation_count
+        session.violation_count,
+        answers_list
     )
 
     return {"status": session.status, "score": final_score}
 
-def perform_zoho_sync(candidate_id, score, status, end_time, answers, has_dept_test, total_possible, violations):
+def perform_zoho_sync(candidate_id, score, status, end_time, has_dept_test, total_possible, violations, answers):
     try:
         print(f"Starting Background Sync for {candidate_id}...")
         
