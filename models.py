@@ -1,5 +1,5 @@
 # models.py
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Boolean
 from database import Base
 from services.timer import get_ist_time
 
@@ -20,6 +20,8 @@ class TestSession(Base):
     position_name = Column(String, nullable=True)
     has_department_test = Column(String, default="No")
     violation_count = Column(Integer, default=0)
+
+    is_synced = Column(Boolean, default=False)
     
     question_cache = Column(JSON, nullable=True)
     grading_cache = Column(JSON, nullable=True)

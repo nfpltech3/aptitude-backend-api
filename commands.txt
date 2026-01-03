@@ -1,27 +1,21 @@
 
 # client id 
-# 1000.ZQ01RP4N64VXJSTBVQWZ3MLNY82HHM
+# 1000.9JMFOC7NLKIFB02E3V7JLRVNEMXR7X
 
 # client secret
-# 8cc9f0e003541ee545040e0b75776f0f3b939f7b25
+# cab560de77d657f4e6ab971376a6bb05222c88d21d
 
-https://accounts.zoho.in/oauth/v2/auth
-?scope=ZohoCreator.data.READ,ZohoCreator.data.CREATE,ZohoCreator.data.UPDATE
-&client_id=1000.ZQ01RP4N64VXJSTBVQWZ3MLNY82HHM
-&response_type=code
-&access_type=offline
-&prompt=consent
-&redirect_uri=http://localhost
+https://accounts.zoho.in/oauth/v2/auth?scope=ZohoCreator.report.ALL,ZohoCreator.form.ALL,ZohoCreator.meta.ALL&client_id=1000.9JMFOC7NLKIFB02E3V7JLRVNEMXR7X&response_type=code&access_type=offline&prompt=consent&redirect_uri=http://localhost
 
 # grant token -
-# 1000.7b0707236b94a9ea082f7bc3ea5688fd.d1f86294d9d16e462804d4c44209e1c8
+# 1000.9a2997e489775c54740a63977e406f26.589729b3247be9fbf018d014e1aae424
 
 curl -X POST https://accounts.zoho.in/oauth/v2/token ^
 -d grant_type=authorization_code ^
--d client_id=1000.ZQ01RP4N64VXJSTBVQWZ3MLNY82HHM ^
--d client_secret=8cc9f0e003541ee545040e0b75776f0f3b939f7b25 ^
+-d client_id=1000.9JMFOC7NLKIFB02E3V7JLRVNEMXR7X ^
+-d client_secret=cab560de77d657f4e6ab971376a6bb05222c88d21d ^
 -d redirect_uri=http://localhost ^
--d code=1000.7b0707236b94a9ea082f7bc3ea5688fd.d1f86294d9d16e462804d4c44209e1c8
+-d code=1000.9a2997e489775c54740a63977e406f26.589729b3247be9fbf018d014e1aae424
 
 # 1. Initialize the project configuration
 npm init -y

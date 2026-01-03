@@ -230,7 +230,7 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
         # -- Departmental Logic --
         if session.has_department_test == "Yes":
             # Use saved position name
-            c_pos = (session.position_name or "").lower()
+            c_pos = (session.position_name or "").strip().lower()
             
             if c_pos:
                 for q in all_questions_clean:

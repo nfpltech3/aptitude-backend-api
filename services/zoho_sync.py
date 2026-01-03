@@ -150,8 +150,15 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
             
     if res.status_code != 200:
         print(f"Error updating Summary: {res.text}")
+        return False
     else:
-        print(f"Success: Updated Candidate {zoho_id} with Score & Transcript.")
+        resp_data = res.json()
+        if resp_data.get("code") == 3000:
+            print(f"Success: Updated Candidate {zoho_id}")
+            return True # Explicitly return True so resync_tool knows it worked
+        else:
+            print(f"Zoho Error Code: {resp_data.get('code')}")
+            return False
 
 def push_candidate_answers(candidate_zoho_id, answers_list):
     form_link_name = "Candidate_Test_Form"
