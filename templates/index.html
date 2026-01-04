@@ -607,6 +607,8 @@
     let violationCount = 0;
     let lastVisibleTime = Date.now();
     let blurTimer = null;
+    let handleVisibilityChange, handleBlur, handleFocus, handleBeforeUnload;
+    let handlePageHide, handleKeyDown, handleKeyUp, handleFullscreenChange;
 
     // --- 4. STRICT PROCTORING LOGIC ---
     function setupProctoring() {
@@ -628,8 +630,10 @@
 
         let isPageUnloading = false;
 
-        // A. TAB SWITCH / VISIBILITY CHANGE (Time Penalties)
-        document.addEventListener("visibilitychange", () => {
+        // A. TAB SWITCH / VISIBILITY CHANGE
+        handleVisibilityChange = () => {
+            if (isSubmitting || !testHasStarted) return;
+
             if (isPageUnloading || isRefreshing) {
                 console.log("Page unloading detected - suppressing violation");
                 return;
@@ -683,10 +687,10 @@
 
                 attemptViolation(`App Switch (${Math.round(timeAway/1000)}s)`, warningsToGive);
             }
-        });
+        };
 
         // B. WINDOW BLUR (Focus Lost / Clicking Outside)
-        window.addEventListener("blur", () => {
+        handleBlur = () => {
             if (isSubmitting || isRefreshing || isPageUnloading) return;
 
             if (window.isKeyboardAction) {
@@ -700,23 +704,21 @@
                     attemptViolation("Focus Lost / Overlay Detected");
                 }
             }, 4000);
-        });
+        };
 
-        window.addEventListener("focus", () => {
-            if (blurTimer) clearTimeout(blurTimer);
-        });
+        handleFocus = () => { if (blurTimer) clearTimeout(blurTimer); };
 
         // C. FULL SCREEN EXIT DETECTION
         if (!/Mobi|Android/i.test(navigator.userAgent)) {
-            document.addEventListener('fullscreenchange', () => {
+            handleFullscreenChange = () => {
                 if (!document.fullscreenElement && !isSubmitting && !isRefreshing && !isPageUnloading) {
                     attemptViolation("Exited Full Screen Mode");
                 }
-            });
+            };
         }
 
         // D. REFRESH DETECTION & BLOCK KEYS
-        window.addEventListener("beforeunload", () => {
+        handleBeforeUnload = () => {
             isPageUnloading = true;
             isRefreshing = true;
             if (violationTimer) clearTimeout(violationTimer);
@@ -725,21 +727,21 @@
                 isPageUnloading = false;
                 isRefreshing = false;
             }, 2000);
-        });
+        };
 
-        window.addEventListener("pagehide", () => {
+        handlePageHide = () => {
             // If the user swipes the browser away entirely
             if (testHasStarted && !isSubmitting && !isRefreshing && !isPageUnloading) {
-                fetch('/api/record-violation', {
+                fetch('https://aptitude-backend-b6ir.onrender.com/api/record-violation', {
                     keepalive: true,
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token: token, reason: "Browser Process Killed/Swiped Away" })
                 });
             }
-        });
+        };
 
-        document.addEventListener("keydown", (e) => {
+        handleKeyDown = (e) => {
             if(e.key === "F12") { e.preventDefault(); e.stopPropagation(); }
             
             if(e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "J" || e.key === "j" || e.key === "C" || e.key === "c")) {
@@ -774,7 +776,7 @@
                 
                 return false;
             }
-        });
+        };
 
         // Assistant Prevention
         let focusLostTime = null;
@@ -804,7 +806,7 @@
         }, 1000); // Check every 1 second for better precision
 
         // F. SCREENSHOT DEFENSE (Clipboard Wipe Only)
-        document.addEventListener('keyup', (e) => {
+        handleKeyUp = (e) => {
             if (e.key === 'PrintScreen') {
                 // 1. Wipe Clipboard
                 navigator.clipboard.writeText("⚠️ Cheating Detected: Screenshot Disabled");
@@ -824,7 +826,16 @@
                     attemptViolation("Screenshot Attempt (Key)", 1);
                 }, 10);
             }
-        });
+        };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handlePageHide);
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
 
     // G. BLOCK RIGHT CLICK / COPY / PASTE
     document.addEventListener("contextmenu", (e) => { e.preventDefault(); return false; });
@@ -1051,6 +1062,18 @@
         if(!confirm("Are you sure you want to submit?")) return;
         isSubmitting = true;
     }
+
+    testHasStarted = false;
+
+    // 1. REMOVE ALL PROCTORING LISTENERS
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("blur", handleBlur);
+    window.removeEventListener("focus", handleFocus);
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+    window.removeEventListener("pagehide", handlePageHide);
+    document.removeEventListener("keydown", handleKeyDown);
+    document.removeEventListener("keyup", handleKeyUp);
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
 
     const allAudio = document.querySelectorAll('audio');
     allAudio.forEach(audio => {
