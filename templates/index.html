@@ -103,13 +103,37 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.03);
         }
 
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            gap: 10px; /* Adds space between text and marks */
+            width: 100%;
+        }
+
         .question-text {
-            font-size: 1.15rem;
+            flex-grow: 1;
+            font-size: 1.1em;
             font-weight: 600;
             color: #4A148C;
             margin-bottom: 25px;
-            line-height: 1.6;
+            line-height: 1.5;
             white-space: pre-line;
+            word-wrap: break-word;
+        }
+
+        .marks-display {
+            flex-shrink: 0; /* Prevents the badge from getting crushed */
+            white-space: nowrap; /* Keeps '1 Marks' on one line */
+            background: #f8f9fa;
+            color: #6c757d;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            border: 1px solid #dee2e6;
+            align-self: flex-start; /* Keeps it aligned to the top */
         }
 
         /* --- 5. OPTIONS & INPUTS --- */
@@ -1204,12 +1228,12 @@ function renderQuestions(questions, savedAnswers) {
         }
         
         htmlContent += `
-            <div class="question-card" style="background:white; border-left:5px solid #007bff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-                <div class="question-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
-                    <div class="question-text" style="font-size:1.1em; color:#333; padding-right: 10px;">
+            <div class="question-card">
+                <div class="question-header">
+                    <div class="question-text">
                         <strong>Q${index + 1}.</strong> ${q.text}
                     </div>
-                    <div class="marks-display" style="background:#f8f9fa; color:#6c757d; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:600; border:1px solid #dee2e6; white-space:nowrap;">
+                    <div class="marks-display">
                         ${q.max_marks || 1} Marks
                     </div>
                 </div>
