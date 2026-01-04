@@ -110,27 +110,44 @@
             margin-bottom: 25px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: relative;
         }
 
         .question-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: column;
             align-items: flex-start; /* Keeps marks at the top even with multi-line questions */
-            gap: 15px; /* Adds space between text and marks badge */
+            width: 100%;
             margin-bottom: 15px;
         }
 
-        .question-text {
-            flex: 1; /* Allows text to take up remaining space */
+        .question-main {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px; /* Space after the "Q1." */
+            padding-right: 80px;
+        }
+
+        .question-number {
             font-size: 1.1rem;
+            font-weight: 800;
+            color: #333;
+            white-space: nowrap; /* Prevents "Q1." from breaking */
+        }
+
+        .question-text {
+            font-size: 1rem;
             font-weight: 600;
             color: #4A148C;
-            line-height: 1.6;
+            line-height: 1.5;
             white-space: pre-line;
-            margin: 0; /* Removed margin-bottom to keep alignment clean */
+            margin: 0;
         }
 
         .marks-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
             background: #f8f9fa;
             color: #6c757d;
             padding: 4px 12px;
@@ -138,7 +155,6 @@
             font-size: 0.85em;
             font-weight: 600;
             border: 1px solid #dee2e6;
-            white-space: nowrap; /* Prevents "1 Marks" from breaking into two lines */
         }
 
         /* --- 5. OPTIONS & INPUTS --- */
@@ -159,7 +175,7 @@
             box-sizing: border-box;
         }
 
-        .options label:hover {
+        .options label:hover, .options label:focus-within {
             background-color: #F3E5F5;
             border-color: #BA68C8;
         }
@@ -173,7 +189,6 @@
 
         .options input[type="radio"] {
             margin-right: 12px;
-            accent-color: #9C27B0; /* Colors the radio button itself */
         }
 
         textarea {
@@ -1242,12 +1257,11 @@ function renderQuestions(questions, savedAnswers) {
         
         htmlContent += `
             <div class="question-card">
+                <div class="marks-display">${q.max_marks || 1} Marks</div>
                 <div class="question-header">
-                    <div class="question-text">
-                        <strong>Q${index + 1}.</strong> ${q.text}
-                    </div>
-                    <div class="marks-display">
-                        ${q.max_marks || 1} Marks
+                    <div class="question-main">
+                        <span class="question-number">Q${index + 1}.</span>
+                        <p class="question-text">${q.text}</p>
                     </div>
                 </div>
                 ${inputHtml}
