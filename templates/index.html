@@ -103,22 +103,55 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.03);
         }
 
+        .question-card {
+            background: white;
+            border-left: 5px solid #007bff;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; /* Keeps marks at the top even with multi-line questions */
+            gap: 15px; /* Adds space between text and marks badge */
+            margin-bottom: 15px;
+        }
+
         .question-text {
-            font-size: 1.15rem;
+            flex: 1; /* Allows text to take up remaining space */
+            font-size: 1.1rem;
             font-weight: 600;
             color: #4A148C;
-            margin-bottom: 25px;
             line-height: 1.6;
             white-space: pre-line;
+            margin: 0; /* Removed margin-bottom to keep alignment clean */
+        }
+
+        .marks-display {
+            background: #f8f9fa;
+            color: #6c757d;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            border: 1px solid #dee2e6;
+            white-space: nowrap; /* Prevents "1 Marks" from breaking into two lines */
         }
 
         /* --- 5. OPTIONS & INPUTS --- */
+        .options-wrapper {
+            margin-top: 15px;
+        }
         .options label {
-            display: block;
+            display: flex;
+            align-items: center;
             width: 100%;
-            padding: 15px 15px;
-            margin-bottom: 12px;
-            background: #fff;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background: #fafafa;
             border: 1px solid #E0E0E0;
             border-radius: 12px;
             cursor: pointer;
@@ -138,6 +171,11 @@
             font-weight: bold;
         }
 
+        .options input[type="radio"] {
+            margin-right: 12px;
+            accent-color: #9C27B0; /* Colors the radio button itself */
+        }
+
         textarea {
             width: 100%;
             padding: 15px;
@@ -149,11 +187,29 @@
             outline: none;
             font-family: inherit;
             box-sizing: border-box;
+            -webkit-user-select: text;
+            user-select: text;
         }
+
         textarea:focus {
             background-color: #ffffff;
-            border-color: #333333;
+            border-color: #9C27B0;
             color: #000;
+        }
+
+        /* topic header */
+        .topic-header {
+            margin: 30px 0 15px 0;
+            padding: 10px 0;
+            border-bottom: 2px solid #9C27B0;
+        }
+
+        .topic-header h3 {
+            margin: 0 0 5px 0;
+            color: #4A148C;
+            text-transform: uppercase;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
         }
 
         /* --- BUTTONS --- */
@@ -306,26 +362,6 @@
             user-select: none;          /* Standard */
         }
 
-        /* Re-enable selection ONLY for textareas so candidates can still type their answers */
-        textarea, input[type="text"] {
-            -webkit-user-select: text;
-            user-select: text;
-        }
-
-        /* topic header */
-        .topic-header {
-            margin: 30px 0 15px 0;
-            padding: 10px 0;
-            border-bottom: 2px solid #9C27B0;
-        }
-
-        .topic-header h3 {
-            margin: 0;
-            color: #4A148C;
-            text-transform: uppercase;
-            font-size: 1.2rem;
-            letter-spacing: 1px;
-        }
     </style>
 </head>
 <body>
@@ -1157,7 +1193,6 @@ function closeApp() {
     // --- 6. RENDER LOGIC ---
 function renderQuestions(questions, savedAnswers) {
     const container = document.getElementById('questions-container');
-    
     let htmlContent = '';
     let currentTopic = null;
 
@@ -1188,28 +1223,30 @@ function renderQuestions(questions, savedAnswers) {
                 const isChecked = (savedVal === letter) ? 'checked' : ''; 
                 
                 return `
-                    <label style="display:block; padding:12px; border:1px solid #eee; margin-bottom:8px; border-radius:8px; cursor:pointer; background:#fafafa; transition: 0.2s;">
+                    <label>
                         <input type="radio" name="q_${q.question_id}" value="${letter}" 
                             onchange="saveAnswer('${q.question_id}', this.value)" 
-                            ${isChecked} style="margin-right: 10px;">
-                        <strong>${letter}.</strong> ${opt}
+                            ${isChecked}>
+                        <span>${opt}</span>
                     </label>`;
             }).join('')}
             </div>`;
         } else {
             const valText = savedVal || '';
-            inputHtml = `<textarea style="width:100%; height:80px; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;" 
-                            placeholder="Type your answer here..." 
-                            onblur="saveAnswer('${q.question_id}', this.value)">${valText}</textarea>`;
+            inputHtml = `
+                <div class="options-wrapper">
+                        <textarea placeholder="Type your answer here..." 
+                            onblur="saveAnswer('${q.question_id}', this.value)">${valText}</textarea>
+                </div>`;
         }
         
         htmlContent += `
-            <div class="question-card" style="background:white; border-left:5px solid #007bff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-                <div class="question-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
-                    <div class="question-text" style="font-size:1.1em; color:#333; padding-right: 10px;">
+            <div class="question-card">
+                <div class="question-header">
+                    <div class="question-text">
                         <strong>Q${index + 1}.</strong> ${q.text}
                     </div>
-                    <div class="marks-display" style="background:#f8f9fa; color:#6c757d; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:600; border:1px solid #dee2e6; white-space:nowrap;">
+                    <div class="marks-display">
                         ${q.max_marks || 1} Marks
                     </div>
                 </div>
