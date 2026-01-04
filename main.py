@@ -73,16 +73,14 @@ def check_candidate_token(token: str, device_id: str = None, db: Session = Depen
     
     if session:
         if session.status in ["Submitted", "Auto-Submitted"]:
-             return {"status": "Submitted", "name": session.candidate_name}
+             return {"status": "Already-Submitted", "name": session.candidate_name}
         
         if session.status == "In-Progress":
             if session.device_id == device_id:
                 return {"status": "Resuming", "name": session.candidate_name, "instructions": "Resuming test..."}
             else:
-                # Only block if a DIFFERENT device tries to enter
                 return {"status": "Device-Locked", "name": session.candidate_name, "instructions": "Cannot access on other device/browser."}
         
-        # If Allocated (New), allow entry
         return {"status": "New", "name": session.candidate_name, "instructions": "..."}
     
     # 2. If token is NOT found, it might be a "Resent" link
@@ -93,15 +91,14 @@ def check_candidate_token(token: str, device_id: str = None, db: Session = Depen
             raise HTTPException(status_code=404, detail="Invalid token")
 
         zoho_id = str(alloc["ID"])
-        
-        # Check if this Zoho ID already has a session with an OLD token
         existing_user_session = db.query(models.TestSession).filter(
             models.TestSession.candidate_id == zoho_id
         ).first()
 
         if existing_user_session:
             if existing_user_session.status not in ["Submitted", "Auto-Submitted"]:
-                existing_user_session.token = token 
+                existing_user_session.token = token
+                existing_user_session.device_id = None
                 db.commit()
                 return {"status": "New", "name": existing_user_session.candidate_name}
             else:
@@ -428,11 +425,12 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
 
     return {"status": session.status, "score": final_score}
 
-def perform_zoho_sync(candidate_id, score, status, end_time, has_dept_test, total_possible, violations, answers):
+def perform_zoho_sync(candidate_id, score, status, end_time, has_dept_test, total_possible, violations, answers, session_id):
+    db = SessionLocal()
     try:
         print(f"Starting Background Sync for {candidate_id}...")
         
-        update_candidate_summary(
+        success = update_candidate_summary(
             zoho_id=candidate_id, 
             mcq_score=score, 
             status=status,
@@ -443,12 +441,22 @@ def perform_zoho_sync(candidate_id, score, status, end_time, has_dept_test, tota
             answers_list=answers
         )
         
+        if success:
+            session_rec = db.query(models.TestSession).filter(models.TestSession.id == session_id).first()
+            if session_rec:
+                session_rec.is_synced = True
+                db.commit()
+                print(f"✅ Successfully marked {candidate_id} as Synced in Neon.")
+        
         # # B. Push Answers -> Disabled to save api calls
         # if answers:
         #     push_candidate_answers(candidate_id, answers)
         
     except Exception as e:
         print(f"CRITICAL: Background Sync Failed for {candidate_id}: {e}")
+    
+    finally:
+        db.close()
 
 @app.post("/api/webhook/add-candidate")
 def add_candidate_webhook(data: CandidateWebhook, db: Session = Depends(get_db)):

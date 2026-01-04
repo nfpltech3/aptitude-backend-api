@@ -452,6 +452,11 @@
 
     // --- 1. INITIALIZATION ---
     async function init() {
+        if (!token) {
+            document.getElementById('loading-msg').innerText = "Error: Invalid Link";
+            return;
+        }
+        
         const fingerprint = getFingerprint();
         try {
             // Send fingerprint to backend for verification
@@ -463,12 +468,30 @@
                 return;
             }
 
+            if (data.status === "Already-Submitted" || data.status === "Submitted" || data.status === "Auto-Submitted") {
+                showFinalSuccessScreen();
+                return;
+            }
+
             // If status is Resuming or New, allow them to see the Start button
             document.getElementById('welcome-msg').innerText = `Welcome, ${data.name}`;
             document.getElementById('loading-msg').classList.add('hidden');
             document.getElementById('start-btn').classList.remove('hidden');
 
         } catch (err) { console.error(err); }
+    }
+
+    function showFinalSuccessScreen() {
+        document.body.innerHTML = `
+            <div style='text-align:center; margin-top:100px; padding:20px;'>
+                <div style='font-size: 60px;'>✅</div>
+                <h1 style='color:#28a745;'>Test Successfully Submitted!</h1>
+                <p style='color:#666; font-size:1.2rem;'>Your responses have been recorded by Nagarkot Forwarders.</p>
+                <p>You may now close this window or exit the application.</p>
+                <button onclick="window.close()" class="btn" style="background:#333; margin-top:20px;">Exit</button>
+            </div>`;
+        // Ensure we stop any background timers or audio
+        if (timerInterval) clearInterval(timerInterval);
     }
 
     // --- 2. START TEST LOGIC ---
@@ -585,7 +608,7 @@
 
     // --- 4. STRICT PROCTORING LOGIC ---
     function setupProctoring() {
-        // 1. Helper to toggle the Blur Effect
+        // Helper to toggle the Blur Effect
         const toggleBlur = (enable) => {
             const body = document.body;
             if (enable) body.classList.add('security-blur');
