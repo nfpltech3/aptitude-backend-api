@@ -103,6 +103,38 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.03);
         }
 
+        .short-input, .long-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #E0E0E0;
+            background-color: #fafafa;
+            border-radius: 12px;
+            transition: all 0.2s ease-in-out;
+            outline: none;
+            font-family: inherit;
+            box-sizing: border-box;
+            scroll-margin-top: 100px; /* Space for sticky header */
+            -webkit-user-select: text; /* Allow typing/selection */
+            user-select: text;
+        }
+
+        /* Height differentiation */
+        .short-input {
+            min-height: 50px; /* Compact for short answers */
+        }
+
+        .long-input {
+            min-height: 150px; /* Spacious for detailed answers */
+            resize: vertical;
+        }
+
+        /* Unified Focus State */
+        .short-input:focus, .long-input:focus {
+            background-color: #ffffff;
+            border-color: #333333;
+            color: #000;
+        }
+
         .question-header {
             display: flex;
             justify-content: space-between;
@@ -116,11 +148,20 @@
             flex-grow: 1;
             font-size: 1.1em;
             font-weight: 600;
-            color: #4A148C;
-            margin-bottom: 25px;
+            color: #333;
             line-height: 1.5;
             white-space: pre-line;
             word-wrap: break-word;
+        }
+
+        .question-meta {
+            display: block;
+            font-size: 0.85em;
+            font-weight: 400;
+            color: #888;
+            margin-top: 8px;
+            font-style: italic;
+            text-transform: capitalize;
         }
 
         .marks-display {
@@ -162,24 +203,6 @@
             font-weight: bold;
         }
 
-        textarea {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #E0E0E0;
-            background-color: #fafafa;
-            border-radius: 12px;
-            min-height: 100px;
-            transition: all 0.2s ease-in-out;
-            outline: none;
-            font-family: inherit;
-            box-sizing: border-box;
-        }
-        textarea:focus {
-            background-color: #ffffff;
-            border-color: #333333;
-            color: #000;
-        }
-
         /* --- BUTTONS --- */
         .submit-container { margin-top: 25px; text-align: center; }
 
@@ -207,12 +230,6 @@
             border: 1px solid #eee;
             box-shadow: 0 5px 20px rgba(0,0,0,0.05);
             text-align: center;
-        }
-
-        textarea, input[type="text"] {
-            /* When we tell JS to scroll to 'start', this ensures it stops 
-            100px down from the top (leaving space for your Header) */
-            scroll-margin-top: 100px; 
         }
 
         /* --- MODAL --- */
@@ -310,6 +327,7 @@
 
             #timer-display { font-size: 1.1rem; padding: 8px 18px; }
             .question-text { font-size: 1rem; }
+            .short-input, .long-input { font-size: 16px; }
         }
 
         @media print {
@@ -328,12 +346,6 @@
             -moz-user-select: none;     /* Firefox */
             -ms-user-select: none;      /* IE/Edge */
             user-select: none;          /* Standard */
-        }
-
-        /* Re-enable selection ONLY for textareas so candidates can still type their answers */
-        textarea, input[type="text"] {
-            -webkit-user-select: text;
-            user-select: text;
         }
 
         /* topic header */
@@ -1189,9 +1201,8 @@ function renderQuestions(questions, savedAnswers) {
         const qIdStr = String(q.question_id);
         const savedVal = savedAnswers[qIdStr];
         
-        // --- A. INSERT HEADER IF TOPIC CHANGED ---
+        // TOPIC HEADER
         const thisTopic = q.topic || "General"; 
-        
         if (thisTopic !== currentTopic) {
             currentTopic = thisTopic;
             htmlContent += `
@@ -1212,26 +1223,34 @@ function renderQuestions(questions, savedAnswers) {
                 const isChecked = (savedVal === letter) ? 'checked' : ''; 
                 
                 return `
-                    <label style="display:block; padding:12px; border:1px solid #eee; margin-bottom:8px; border-radius:8px; cursor:pointer; background:#fafafa; transition: 0.2s;">
+                    <label>
                         <input type="radio" name="q_${q.question_id}" value="${letter}" 
                             onchange="saveAnswer('${q.question_id}', this.value)" 
                             ${isChecked} style="margin-right: 10px;">
-                        <strong>${letter}.</strong> ${opt}
+                         ${opt}
                     </label>`;
             }).join('')}
             </div>`;
-        } else {
+        } else if (q.type === 'Short Descriptive') {
             const valText = savedVal || '';
-            inputHtml = `<textarea style="width:100%; height:80px; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;" 
-                            placeholder="Type your answer here..." 
-                            onblur="saveAnswer('${q.question_id}', this.value)">${valText}</textarea>`;
+            inputHtml = `<input type="text" 
+                            class="short-input"
+                            value="${savedVal}"
+                            placeholder="Enter short answer..." 
+                            onblur="saveAnswer('${q.question_id}', this.value)">`;
+        } else {
+            inputHtml = `<textarea 
+                            class="long-input"
+                            placeholder="Type your detailed answer here..." 
+                            onblur="saveAnswer('${q.question_id}', this.value)">${savedVal}</textarea>`;
         }
         
         htmlContent += `
             <div class="question-card">
                 <div class="question-header">
                     <div class="question-text">
-                        <strong>Q${index + 1}.</strong> ${q.text}
+                        ${index + 1} - ${q.text}
+                        <div class="question-meta">${q.type}</div>
                     </div>
                     <div class="marks-display">
                         ${q.max_marks || 1} Marks
