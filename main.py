@@ -68,22 +68,53 @@ def home():
 def check_candidate_token(token: str, device_id: str = None, db: Session = Depends(get_db)):
     token = token.strip()
 
-    # 1. First, check if this specific token exists
+    # 1. Check if token exists in DB
     session = crud.get_session_by_token(db, token)
     
     if session:
         if session.status in ["Submitted", "Auto-Submitted"]:
-             return {"status": "Already-Submitted", "name": session.candidate_name}
+            # Block if already submitted
+            return {
+                "status": "Already-Submitted", 
+                "name": session.candidate_name,
+                "message": "This test has already been completed and cannot be reopened."
+            }
         
         if session.status == "In-Progress":
+            if not session.device_id:
+                # Edge case: test started but device_id wasn't saved (old version)
+                session.device_id = device_id
+                db.commit()
+                return {
+                    "status": "Resuming", 
+                    "name": session.candidate_name, 
+                    "instructions": "Resuming test..."
+                }
+                
             if session.device_id == device_id:
-                return {"status": "Resuming", "name": session.candidate_name, "instructions": "Resuming test..."}
+                return {
+                    "status": "Resuming", 
+                    "name": session.candidate_name, 
+                    "instructions": "Resuming test..."
+                }
             else:
-                return {"status": "Device-Locked", "name": session.candidate_name, "instructions": "Cannot access on other device/browser."}
+                # Different device detected!
+                return {
+                    "status": "Device-Locked", 
+                    "name": session.candidate_name, 
+                    "message": "This test is active on another device. You cannot access it from here.",
+                    "instructions": "Please use the original device/browser to continue."
+                }
         
-        return {"status": "New", "name": session.candidate_name, "instructions": "..."}
-    
-    # 2. If token is NOT found, it might be a "Resent" link
+        # Allocated status - fresh start allowed
+        if session.status == "Allocated":
+            return {
+                "status": "New", 
+                "name": session.candidate_name, 
+                "instructions": "Click 'Start Assessment' to begin."
+            }
+            
+    # 2. Token not in DB - Check Zoho for fresh allocation
     if not session:
         print(f"Token {token} not in DB. Checking Zoho for fresh allocation...")
         alloc = fetch_candidate_by_token(token)
@@ -91,37 +122,52 @@ def check_candidate_token(token: str, device_id: str = None, db: Session = Depen
             raise HTTPException(status_code=404, detail="Invalid token")
 
         zoho_id = str(alloc["ID"])
+        # Check if user already has a session
         existing_user_session = db.query(models.TestSession).filter(
             models.TestSession.candidate_id == zoho_id
         ).first()
 
         if existing_user_session:
+            # User exists - check their status
             if existing_user_session.status not in ["Submitted", "Auto-Submitted"]:
+                return {
+                    "status": "Already-Submitted", 
+                    "name": existing_user_session.candidate_name,
+                    "message": "You have already completed this assessment."
+                }
+            
+            if existing_user_session.status == "In-Progress":
+                # Keep the device lock but update token
                 existing_user_session.token = token
-                existing_user_session.device_id = None
                 db.commit()
-                return {"status": "New", "name": existing_user_session.candidate_name}
-            else:
-                return {"status": "Submitted", "name": existing_user_session.candidate_name}
-
-    # 2. FALLBACK PATH (Call Zoho if DB is empty/wiped)
-    print(f"⚠️ Session missing for {token}. Attempting Fallback Fetch...")
-    
-    alloc = fetch_candidate_by_token(token)
-    if not alloc:
-        raise HTTPException(status_code=404, detail="Invalid token")
-
+                return {
+                    "status": "Device-Locked", 
+                    "name": existing_user_session.candidate_name,
+                    "message": "Your test is already in progress on another device."
+                }
+            
+            # Allocated status - allow new link
+            existing_user_session.token = token
+            existing_user_session.device_id = None  # Reset device lock
+            db.commit()
+            return {
+                "status": "New", 
+                "name": existing_user_session.candidate_name
+            }
+        
     token_status = alloc.get("Token_Status") or alloc.get("Token_Status1") 
     if token_status and token_status != "Valid":
-         raise HTTPException(status_code=403, detail="Token is Invalid")
-
-    # Extract Data
+        raise HTTPException(
+            status_code=403, 
+            detail="This link has been invalidated. Please contact HR."
+        )
+    
+    # Extract Candidate Data
     zoho_duration = alloc.get("Test_Duration_Minutes")
     duration_mins = int(zoho_duration) if zoho_duration else 40
-
+    
     name_data = alloc.get("Candidate_Name")
     candidate_name = name_data.get("display_value") if isinstance(name_data, dict) else name_data
-    # Safety fallback if name is somehow None
     if not candidate_name: candidate_name = "Candidate"
 
     # Position Logic
@@ -150,7 +196,7 @@ def check_candidate_token(token: str, device_id: str = None, db: Session = Depen
 
     return {
         "status": "New", 
-        "name": candidate_name, # Return the name we just extracted
+        "name": candidate_name,
         "instructions": "Please do not refresh the page once started."
     }
 
@@ -174,11 +220,25 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
     token = data.get("token", "").strip()
     device_id = data.get("device_id")
 
-    # 1. Fetch Session from Local DB (Fast)
+    # 1. Fetch Session
     session = crud.get_session_by_token(db, token)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found. Please reload.")
 
+    # Prevent starting if already submitted
+    if session.status in ["Submitted", "Auto-Submitted"]:
+        raise HTTPException(
+            status_code=403, 
+            detail="This test has already been submitted and cannot be restarted."
+        )
+        
+    if session.status == "In-Progress":
+        if session.device_id and session.device_id != device_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Test is active on another device. Access denied."
+            )
+    
     if not session.device_id:
         session.device_id = device_id
         db.commit()
@@ -187,15 +247,13 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
     if session.status == "Allocated":
         crud.start_session_timer(db, session, session.duration_minutes)
     
-    # 3. Fetch Questions (from Cache)
-    # if not session.question_cache:
-    if True:
+    # 3. Fetch/Generate Questions
+    if True: # always regenerate for now
         raw_questions = fetch_all_zoho_questions()
         
         # B. Clean & Standardize Data
         all_questions_clean = []
         for q in raw_questions:
-            
             raw_sub = q.get("Position_Relevant_To")
             z_sub = "General"
             
@@ -215,7 +273,6 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                 # Case 3: It's just a String
                 z_sub = str(raw_sub)
 
-            # Handle Options
             opts = [
                 str(q.get("Option_A", "")).strip(),
                 str(q.get("Option_B", "")).strip(),
@@ -223,7 +280,6 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                 str(q.get("Option_D", "")).strip()
             ]
             
-            # Handle Correct Answer Text
             correct_letter = str(q.get("Correct_Answer", "")).strip().upper()
 
             all_questions_clean.append({
@@ -238,18 +294,16 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                 "max_marks": int(q.get("Max_Marks", 1) or 1)
             })
 
-        # C. Select Questions
+        # Select Questions
         all_eligible_questions = []
-
-        # 1. select aptitude, numerical and verbal ques
-        standard_topics = ["Aptitude", "Numerical", "Verbal"]
+        standard_topics = ["Numerical", "Verbal"]
+        
         for q in all_questions_clean:
             if q["topic"] in standard_topics:
                 all_eligible_questions.append(q)
         
         # -- Departmental Logic --
         if session.has_department_test == "Yes":
-            # Use saved position name
             c_pos = (session.position_name or "").strip().lower()
             
             if c_pos:
@@ -264,19 +318,18 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
         random.shuffle(all_eligible_questions)
 
         # D. Sort by Topic Priority
-        topic_priority = {"Aptitude": 1, "Numerical": 2, "Verbal": 3, "Departmental": 4}
+        topic_priority = {"Numerical": 1, "Verbal": 2, "Departmental": 3}
         selected_questions = sorted(
             all_eligible_questions, 
             key=lambda q: topic_priority.get(q["topic"], 99)
         )
 
-        # E. Prepare Cache (Frontend & Grading)
+        # Prepare Cache
         safe_cache = []
         grading_cache = {}
 
         for q in selected_questions:
             q_id = q["id"]
-            
             safe_cache.append({
                 "question_id": q_id,
                 "text": q["text"],
@@ -305,12 +358,23 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
          crud.start_session_timer(db, session, 40)
     remaining_delta = session.end_time - now_ist
     remaining_seconds = max(0, int(remaining_delta.total_seconds()))
+    
+    # If time is already over, auto-submit
+    if remaining_seconds <= 0:
+        session.status = "Auto-Submitted"
+        session.submission_type = "Timer"
+        db.commit()
+        raise HTTPException(
+            status_code=403,
+            detail="Test time has expired. The test has been auto-submitted."
+        )
 
     # Fetch Saved Answers (if any)
     saved_answers_query = db.query(models.Answer).filter(models.Answer.session_id == session.id).all()
     saved_map = {str(a.question_id): a.answer_text for a in saved_answers_query}
 
     return {
+        "status": session.status,
         "end_time": session.end_time.isoformat(),
         "remaining_seconds": remaining_seconds,
         "questions": session.question_cache,
@@ -420,7 +484,8 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         session.has_department_test,
         total_possible,
         session.violation_count,
-        answers_list
+        answers_list,
+        session.id
     )
 
     return {"status": session.status, "score": final_score}

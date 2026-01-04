@@ -410,6 +410,8 @@
     let testHasStarted = false;
 
     document.addEventListener("DOMContentLoaded", function() {
+        isRefreshing = false;
+
         // --- 1. KEYBOARD GUARD ---
         window.isKeyboardAction = false; 
 
@@ -525,8 +527,8 @@
 
             localStorage.setItem("test_active_" + token, "true");
 
-            if (data.status === "Submitted") {
-                document.body.innerHTML = "<h1>Test Already Submitted</h1>";
+            if (data.status === "Submitted" || data.status === "Auto-Submitted") {
+                showFinalSuccessScreen();
                 return;
             }
 
@@ -624,8 +626,15 @@
         let blurTimer = null;
         let shortSwitchCount = 0;
 
+        let isPageUnloading = false;
+
         // A. TAB SWITCH / VISIBILITY CHANGE (Time Penalties)
         document.addEventListener("visibilitychange", () => {
+            if (isPageUnloading || isRefreshing) {
+                console.log("Page unloading detected - suppressing violation");
+                return;
+            }
+
             if (document.hidden) {
                 // User LEFT the tab
                 if (testHasStarted && !isSubmitting) { 
@@ -637,6 +646,11 @@
                 stopBeep();
                 const timeAway = Date.now() - lastVisibleTime;
                 lastVisibleTime = Date.now();
+
+                if (isRefreshing || isPageUnloading) {
+                    console.log("Refresh detected - no penalty applied");
+                    return;
+                }
 
                 // 1. Auto-Submit if away too long (>15s)
                 if (timeAway > 15000) {
@@ -673,7 +687,7 @@
 
         // B. WINDOW BLUR (Focus Lost / Clicking Outside)
         window.addEventListener("blur", () => {
-            if (isSubmitting) return;
+            if (isSubmitting || isRefreshing || isPageUnloading) return;
 
             if (window.isKeyboardAction) {
                 console.log("iOS Keyboard retraction: Violation suppressed.");
@@ -682,7 +696,7 @@
 
             blurTimer = setTimeout(() => {
                 // Only penalize if the window is technically "visible" (e.g. overlay or split screen)
-                if (document.visibilityState === 'visible') {
+                if (document.visibilityState === 'visible' && !isRefreshing) {
                     attemptViolation("Focus Lost / Overlay Detected");
                 }
             }, 4000);
@@ -695,7 +709,7 @@
         // C. FULL SCREEN EXIT DETECTION
         if (!/Mobi|Android/i.test(navigator.userAgent)) {
             document.addEventListener('fullscreenchange', () => {
-                if (!document.fullscreenElement && !isSubmitting && !isRefreshing) {
+                if (!document.fullscreenElement && !isSubmitting && !isRefreshing && !isPageUnloading) {
                     attemptViolation("Exited Full Screen Mode");
                 }
             });
@@ -703,13 +717,19 @@
 
         // D. REFRESH DETECTION & BLOCK KEYS
         window.addEventListener("beforeunload", () => {
+            isPageUnloading = true;
             isRefreshing = true;
             if (violationTimer) clearTimeout(violationTimer);
+
+            setTimeout(() => {
+                isPageUnloading = false;
+                isRefreshing = false;
+            }, 2000);
         });
 
         window.addEventListener("pagehide", () => {
             // If the user swipes the browser away entirely
-            if (testHasStarted && !isSubmitting && !isRefreshing) {
+            if (testHasStarted && !isSubmitting && !isRefreshing && !isPageUnloading) {
                 fetch('/api/record-violation', {
                     keepalive: true,
                     method: 'POST',
@@ -756,21 +776,17 @@
             }
         });
 
-        // for assistant prevention
-
-        let focusLostTime = null; // Track when focus was first lost
-
+        // Assistant Prevention
+        let focusLostTime = null;
         setInterval(() => {
-            if (testHasStarted && !isSubmitting) {
+            if (testHasStarted && !isSubmitting && !isRefreshing) {
                 if (window.AndroidInterface && typeof window.AndroidInterface.hasFocus === 'function') {
-                    
                     if (!window.AndroidInterface.hasFocus()) {
                         // 1. If focus is lost, record the start time if not already tracked
                         if (!focusLostTime) {
                             focusLostTime = Date.now();
                         }
 
-                        // 2. Calculate how long focus has been gone
                         const durationAway = Date.now() - focusLostTime;
 
                         // 3. Only trigger violation if they are away for more than 4 seconds (4000ms)
@@ -857,11 +873,15 @@
 
     function attemptViolation(reason, penaltyPoints = 1) {
         // 1. Ignore if page is unloading (Refresh)
-        if (!testHasStarted || isSubmitting || isRefreshing) return;
+        if (!testHasStarted || isSubmitting || isRefreshing) 
+        {
+            console.log(`Violation suppressed: ${reason} (refresh/unload)`);
+            return;
+        }
 
         // 2. Ignore if Modal is open
         const modal = document.getElementById("cheat-modal");
-        if (modal.style.display === "block") return;
+        if (modal && modal.style.display === "block") return;
 
         // 3. Clear existing timer to reset the delay
         if (violationTimer) clearTimeout(violationTimer);
