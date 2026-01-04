@@ -103,78 +103,13 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.03);
         }
 
-        .short-input, .long-input {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #E0E0E0;
-            background-color: #fafafa;
-            border-radius: 12px;
-            transition: all 0.2s ease-in-out;
-            outline: none;
-            font-family: inherit;
-            box-sizing: border-box;
-            scroll-margin-top: 100px; /* Space for sticky header */
-            -webkit-user-select: text; /* Allow typing/selection */
-            user-select: text;
-        }
-
-        /* Height differentiation */
-        .short-input {
-            min-height: 50px; /* Compact for short answers */
-        }
-
-        .long-input {
-            min-height: 150px; /* Spacious for detailed answers */
-            resize: vertical;
-        }
-
-        /* Unified Focus State */
-        .short-input:focus, .long-input:focus {
-            background-color: #ffffff;
-            border-color: #333333;
-            color: #000;
-        }
-
-        .question-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-            gap: 10px; /* Adds space between text and marks */
-            width: 100%;
-        }
-
         .question-text {
-            flex-grow: 1;
-            font-size: 1.1em;
+            font-size: 1.15rem;
             font-weight: 600;
-            color: #333;
-            line-height: 1.5;
+            color: #4A148C;
+            margin-bottom: 25px;
+            line-height: 1.6;
             white-space: pre-line;
-            word-wrap: break-word;
-        }
-
-        .question-meta {
-            display: block;
-            font-size: 0.85em;
-            font-weight: 400;
-            color: #888;
-            margin-top: 8px;
-            font-style: italic;
-            text-transform: capitalize;
-        }
-
-        .marks-display {
-            flex-shrink: 0; /* Prevents the badge from getting crushed */
-            white-space: nowrap; /* Keeps '1 Marks' on one line */
-            background: #f8f9fa;
-            color: #6c757d;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 600;
-            border: 1px solid #dee2e6;
-            align-self: flex-start; /* Keeps it aligned to the top */
         }
 
         /* --- 5. OPTIONS & INPUTS --- */
@@ -201,6 +136,24 @@
             border-color: #9C27B0;
             color: #4A148C;
             font-weight: bold;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #E0E0E0;
+            background-color: #fafafa;
+            border-radius: 12px;
+            min-height: 100px;
+            transition: all 0.2s ease-in-out;
+            outline: none;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            background-color: #ffffff;
+            border-color: #333333;
+            color: #000;
         }
 
         /* --- BUTTONS --- */
@@ -230,6 +183,12 @@
             border: 1px solid #eee;
             box-shadow: 0 5px 20px rgba(0,0,0,0.05);
             text-align: center;
+        }
+
+        textarea, input[type="text"] {
+            /* When we tell JS to scroll to 'start', this ensures it stops 
+            100px down from the top (leaving space for your Header) */
+            scroll-margin-top: 100px; 
         }
 
         /* --- MODAL --- */
@@ -327,7 +286,6 @@
 
             #timer-display { font-size: 1.1rem; padding: 8px 18px; }
             .question-text { font-size: 1rem; }
-            .short-input, .long-input { font-size: 16px; }
         }
 
         @media print {
@@ -346,6 +304,12 @@
             -moz-user-select: none;     /* Firefox */
             -ms-user-select: none;      /* IE/Edge */
             user-select: none;          /* Standard */
+        }
+
+        /* Re-enable selection ONLY for textareas so candidates can still type their answers */
+        textarea, input[type="text"] {
+            -webkit-user-select: text;
+            user-select: text;
         }
 
         /* topic header */
@@ -1201,8 +1165,9 @@ function renderQuestions(questions, savedAnswers) {
         const qIdStr = String(q.question_id);
         const savedVal = savedAnswers[qIdStr];
         
-        // TOPIC HEADER
+        // --- A. INSERT HEADER IF TOPIC CHANGED ---
         const thisTopic = q.topic || "General"; 
+        
         if (thisTopic !== currentTopic) {
             currentTopic = thisTopic;
             htmlContent += `
@@ -1223,36 +1188,28 @@ function renderQuestions(questions, savedAnswers) {
                 const isChecked = (savedVal === letter) ? 'checked' : ''; 
                 
                 return `
-                    <label>
+                    <label style="display:block; padding:12px; border:1px solid #eee; margin-bottom:8px; border-radius:8px; cursor:pointer; background:#fafafa; transition: 0.2s;">
                         <input type="radio" name="q_${q.question_id}" value="${letter}" 
                             onchange="saveAnswer('${q.question_id}', this.value)" 
                             ${isChecked} style="margin-right: 10px;">
-                         ${opt}
+                        <strong>${letter}.</strong> ${opt}
                     </label>`;
             }).join('')}
             </div>`;
-        } else if (q.type === 'Short Descriptive') {
-            const valText = savedVal || '';
-            inputHtml = `<input type="text" 
-                            class="short-input"
-                            value="${savedVal}"
-                            placeholder="Enter short answer..." 
-                            onblur="saveAnswer('${q.question_id}', this.value)">`;
         } else {
-            inputHtml = `<textarea 
-                            class="long-input"
-                            placeholder="Type your detailed answer here..." 
-                            onblur="saveAnswer('${q.question_id}', this.value)">${savedVal}</textarea>`;
+            const valText = savedVal || '';
+            inputHtml = `<textarea style="width:100%; height:80px; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;" 
+                            placeholder="Type your answer here..." 
+                            onblur="saveAnswer('${q.question_id}', this.value)">${valText}</textarea>`;
         }
         
         htmlContent += `
-            <div class="question-card">
-                <div class="question-header">
-                    <div class="question-text">
-                        ${index + 1} - ${q.text}
-                        <div class="question-meta">${q.type}</div>
+            <div class="question-card" style="background:white; border-left:5px solid #007bff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                <div class="question-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+                    <div class="question-text" style="font-size:1.1em; color:#333; padding-right: 10px;">
+                        <strong>Q${index + 1}.</strong> ${q.text}
                     </div>
-                    <div class="marks-display">
+                    <div class="marks-display" style="background:#f8f9fa; color:#6c757d; padding:4px 10px; border-radius:20px; font-size:0.85em; font-weight:600; border:1px solid #dee2e6; white-space:nowrap;">
                         ${q.max_marks || 1} Marks
                     </div>
                 </div>
