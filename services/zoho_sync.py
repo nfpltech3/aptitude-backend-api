@@ -21,12 +21,14 @@ def get_headers():
         "Content-Type": "application/json"
     }
 
-def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has_dept_test, total_possible_marks, violations, answers_list=None):
+def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_end_time, has_dept_test, total_possible_marks, violations, answers_list=None):
     """
     Updates Zoho with Score, Status, and a Topic-Wise HTML Transcript.
     """
     zoho_date_fmt = "%d-%b-%Y %H:%M:%S"
+    
     actual_submission_time = get_ist_time().strftime(zoho_date_fmt)
+    start_time_str = start_time.strftime(zoho_date_fmt) if start_time else ""
     if isinstance(scheduled_end_time, str):
         # It's already a string, just use it
         deadline_time = scheduled_end_time
@@ -124,6 +126,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, scheduled_end_time, has
         "Suspicious_Activity": "Yes" if violations > 0 else "No",
         "Token_Status": "Invalid",
         "Submitted_On": actual_submission_time,
+        "Test_Start_Time": start_time_str,
         "Test_End_Time": deadline_time,
         "Test_Transcript": transcript_html 
     }

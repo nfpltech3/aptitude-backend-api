@@ -480,6 +480,7 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
         session.candidate_id,
         final_score,
         zoho_status,
+        session.start_time,
         time_payload,
         session.has_department_test,
         total_possible,
@@ -490,7 +491,7 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
 
     return {"status": session.status, "score": final_score}
 
-def perform_zoho_sync(candidate_id, score, status, end_time, has_dept_test, total_possible, violations, answers, session_id):
+def perform_zoho_sync(candidate_id, score, status, start_time, end_time, has_dept_test, total_possible, violations, answers, session_id):
     db = SessionLocal()
     try:
         print(f"Starting Background Sync for {candidate_id}...")
@@ -499,6 +500,7 @@ def perform_zoho_sync(candidate_id, score, status, end_time, has_dept_test, tota
             zoho_id=candidate_id, 
             mcq_score=score, 
             status=status,
+            start_time=start_time,
             scheduled_end_time=end_time,
             has_dept_test=has_dept_test,
             total_possible_marks=total_possible,
