@@ -441,56 +441,40 @@
     let annoyingBeepOscillator = null;
     let audioCtx = null;
 
+    function getFingerprint() {
+        let id = localStorage.getItem("device_fingerprint");
+        if (!id) {
+            id = 'dev_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem("device_fingerprint", id);
+        }
+        return id;
+    }
+
     // --- 1. INITIALIZATION ---
     async function init() {
-        if (!token) {
-            document.getElementById('loading-msg').innerText = "Error: Invalid Token Link";
-            return;
-        }
-
-        if(warningCount > 0) {
-            document.getElementById("warn-count").innerText = warningCount;
-            document.getElementById("warning-box").style.display = "block";
-        }
-
+        const fingerprint = getFingerprint();
         try {
-            const res = await fetch(`https://aptitude-backend-b6ir.onrender.com/api/check-token?token=${token}`);
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                document.getElementById('welcome-msg').innerText = "Error";
-                document.getElementById('loading-msg').innerText = errorData.detail || "Verification failed";
-                return;
-            }
-
+            // Send fingerprint to backend for verification
+            const res = await fetch(`https://aptitude-backend-b6ir.onrender.com/api/check-token?token=${token}&device_id=${fingerprint}`);
             const data = await res.json();
 
-            if (data.status === "Submitted" || data.status === "Auto-Submitted") {
-                document.body.innerHTML = "<h1 style='text-align:center; margin-top:50px;'>Test Already Submitted</h1>";
+            if (data.status === "Device-Locked") {
+                document.body.innerHTML = "<div style='text-align:center; padding:50px;'><h1>🚫 Access Denied</h1><p>This test is active on another device.</p></div>";
                 return;
             }
 
-            // Update Name from the API response
+            // If status is Resuming or New, allow them to see the Start button
             document.getElementById('welcome-msg').innerText = `Welcome, ${data.name}`;
             document.getElementById('loading-msg').classList.add('hidden');
             document.getElementById('start-btn').classList.remove('hidden');
 
-            if (data.status === "Resuming") {
-                const isMyTest = localStorage.getItem("test_active_" + token);
-                if (isMyTest === "true") {
-                    beginTest(); 
-                } else {
-                    document.body.innerHTML = "<div style='text-align:center; padding:50px;'><h1>🚫 Access Denied</h1><p>Active on another device.</p></div>";
-                }
-            }
-        } catch (err) { 
-            console.error(err); 
-            document.getElementById('loading-msg').innerText = "Connection error. Please check your internet.";
-        }
+        } catch (err) { console.error(err); }
     }
 
     // --- 2. START TEST LOGIC ---
     async function beginTest() {
+        const fingerprint = getFingerprint();
+
         testHasStarted = true;
 
         try {
@@ -506,7 +490,7 @@
             const res = await fetch('https://aptitude-backend-b6ir.onrender.com/api/start-test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: token })
+                body: JSON.stringify({ token: token,device_id: fingerprint })
             });
             
             const data = await res.json();

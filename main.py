@@ -65,7 +65,7 @@ def home():
     return {"status": "alive", "msg": "Backend running"}
 
 @app.get("/api/check-token")
-def check_candidate_token(token: str, db: Session = Depends(get_db)):
+def check_candidate_token(token: str, device_id: str = None, db: Session = Depends(get_db)):
     token = token.strip()
 
     # 1. First, check if this specific token exists
@@ -76,11 +76,11 @@ def check_candidate_token(token: str, db: Session = Depends(get_db)):
              return {"status": "Submitted", "name": session.candidate_name}
         
         if session.status == "In-Progress":
-             return {
-                 "status": "Resuming", 
-                 "name": session.candidate_name,
-                 "instructions": "Resuming test..."
-             }
+            if session.device_id == device_id:
+                return {"status": "Resuming", "name": session.candidate_name, "instructions": "Resuming test..."}
+            else:
+                # Only block if a DIFFERENT device tries to enter
+                return {"status": "Device-Locked", "name": session.candidate_name, "instructions": "Cannot access on other device/browser."}
         
         # If Allocated (New), allow entry
         return {"status": "New", "name": session.candidate_name, "instructions": "..."}
@@ -100,9 +100,7 @@ def check_candidate_token(token: str, db: Session = Depends(get_db)):
         ).first()
 
         if existing_user_session:
-            # BUG FIX: If test is not submitted, update the token to the new one
             if existing_user_session.status not in ["Submitted", "Auto-Submitted"]:
-                print(f"Updating token for {existing_user_session.candidate_name} to new resent link.")
                 existing_user_session.token = token 
                 db.commit()
                 return {"status": "New", "name": existing_user_session.candidate_name}
@@ -177,12 +175,17 @@ def record_violation(data: ViolationRequest, db: Session = Depends(get_db)):
 @app.post("/api/start-test")
 def start_test_session(data: dict, db: Session = Depends(get_db)):
     token = data.get("token", "").strip()
+    device_id = data.get("device_id")
 
     # 1. Fetch Session from Local DB (Fast)
     session = crud.get_session_by_token(db, token)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found. Please reload.")
 
+    if not session.device_id:
+        session.device_id = device_id
+        db.commit()
+    
     # 2. Activate Timer (If not already running)
     if session.status == "Allocated":
         crud.start_session_timer(db, session, session.duration_minutes)

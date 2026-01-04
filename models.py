@@ -20,6 +20,7 @@ class TestSession(Base):
     position_name = Column(String, nullable=True)
     has_department_test = Column(String, default="No")
     violation_count = Column(Integer, default=0)
+    device_id = Column(String, nullable=True)
 
     is_synced = Column(Boolean, default=False)
     
