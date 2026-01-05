@@ -544,6 +544,6 @@ def add_candidate_webhook(data: CandidateWebhook, db: Session = Depends(get_db))
 
 @app.get("/api/admin/force-resync-99")
 def trigger_resync():
-    from resync_tool import manual_resync
-    manual_resync() # Triggers the logic
+    from resync_tool import run_resync
+    run_resync() # Triggers the logic
     return {"status": "Resync triggered. Check Render logs for details."}
