@@ -902,6 +902,15 @@
         // This calls a method in your Android Java code to disable the hardware back button
         window.AndroidInterface.setTestActive(true);
     }
+
+    window.history.pushState(null, null, window.location.href);
+    window.onpopstate = function() {
+        if (testHasStarted && !isSubmitting) {
+            window.history.pushState(null, null, window.location.href);
+            attemptViolation("Hardware Back Button Pressed", 1);
+            alert("⚠️ Back navigation is disabled during the test.");
+        }
+    };
 }
 
     function addWatermark(candidateName, candidateID) {
@@ -1168,7 +1177,7 @@
                 window.AndroidInterface.clearSession(); 
                 window.AndroidInterface.testFinished(); 
             }
-            
+
             if (window.AndroidInterface && typeof window.AndroidInterface.setTestActive === 'function') {
                 window.AndroidInterface.setTestActive(false);
             }
