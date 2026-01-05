@@ -20,6 +20,7 @@
             color: var(--text-dark); 
             padding: 15px;
             box-sizing: border-box;
+            overscroll-behavior-y: contain;
         }
 
         /* TIMER */
@@ -322,19 +323,34 @@
         }
 
         @media (max-width: 480px) {
-            body { padding: 10px 0; }
+            body { 
+                padding: 10px; /* Consistent spacing around the screen edges */
+            }
             
             #test-interface { 
-                width: 88%;
+                width: 100%; /* Use full width on mobile */
             }
             
             #questions-container {
-                padding: 20px;
-                border-width: 1.5px;
+                padding: 0; /* Remove padding so the outer container is invisible */
+                border: none; /* Removes the "outer card" border */
+                box-shadow: none; /* Ensures no shadow on the outer wrapper */
             }
 
-            #timer-display { font-size: 1.1rem; padding: 8px 18px; }
-            .question-text { font-size: 1rem; }
+            .question-card {
+                padding: 15px; /* Keep padding inside the individual question cards */
+                margin-bottom: 15px;
+                border-radius: 8px; /* Slightly tighter corners for mobile */
+            }
+
+            #timer-display { 
+                font-size: 1rem; 
+                padding: 6px 15px; 
+            }
+
+            .question-text { 
+                font-size: 0.95rem; /* Better readability on small screens */
+            }
         }
 
         @media print {
@@ -881,6 +897,11 @@
         }
     `;
     document.head.appendChild(style);
+
+    if (window.AndroidInterface && typeof window.AndroidInterface.setTestActive === 'function') {
+        // This calls a method in your Android Java code to disable the hardware back button
+        window.AndroidInterface.setTestActive(true);
+    }
 }
 
     function addWatermark(candidateName, candidateID) {
@@ -1146,6 +1167,10 @@
                 // and then testFinished (to exit)
                 window.AndroidInterface.clearSession(); 
                 window.AndroidInterface.testFinished(); 
+            }
+            
+            if (window.AndroidInterface && typeof window.AndroidInterface.setTestActive === 'function') {
+                window.AndroidInterface.setTestActive(false);
             }
 
             // 2. Clear local JS storage
