@@ -456,7 +456,7 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
     # 1. Determine Status
     now_ist = get_ist_time()
     is_timeout = is_time_over(session)
-    session.status = "Auto-Submitted" if is_timeout else "Submitted"
+    session.status = "Submitted" if is_timeout else "Submitted"
     session.submission_type = "Timer" if is_timeout else "Manual"
 
     if hasattr(session, "submitted_at"):
