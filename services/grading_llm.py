@@ -8,6 +8,10 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
     """Uses Groq Cloud to semantically grade short answers."""
+
+    if not user_ans or str(user_ans).strip() == "" or str(user_ans).lower() == "none":
+        print("Empty answer detected. Skipping LLM and awarding 0 marks.")
+        return 0
     
     # Define a robust prompt for grading
     prompt = f"""
@@ -16,6 +20,7 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
     Student: {user_ans}
     
     Rules:
+    - If the Student Answer is blank or irrelevant, the score must be 0.
     - Ignore minor typos and case (e.g., 'Tinaa' = 'Tina').
     - Focus on intent and meaning, not perfect spelling.
     
