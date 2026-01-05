@@ -96,21 +96,22 @@
 
         /* This wrapper acts as the "Card" */
         #questions-container {
-            background: #fff;
-            border: 2px solid #E1BEE7;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            background: #fdfdfd;
+            border: 1px solid #e0e0e0;
+            border-radius: 12;
+            padding: 25;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         .question-card {
-            background: white;
-            border-left: 5px solid #007bff;
-            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #eaeaea;
+            border-left: 6px solid #4A148C;
+            padding: 24px;
             margin-bottom: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-radius: 10px;
             position: relative;
+            transition: transform 0.2s ease;
         }
 
         .question-header {
@@ -124,21 +125,22 @@
         .question-main {
             display: flex;
             align-items: flex-start;
-            gap: 8px; /* Space after the "Q1." */
-            padding-right: 80px;
+            gap: 10px; /* Space after the "Q1." */
+            margin-bottom: 20px;
+            padding-right: 90px;
         }
 
         .question-number {
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             font-weight: 800;
-            color: #333;
+            color: #4A148C;
             white-space: nowrap; /* Prevents "Q1." from breaking */
         }
 
         .question-text {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #4A148C;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #2d2d2d;
             line-height: 1.5;
             white-space: pre-line;
             margin: 0;
@@ -148,68 +150,64 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            background: #f8f9fa;
-            color: #6c757d;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 600;
-            border: 1px solid #dee2e6;
+            background: #f3f0ff;
+            color: #4A148C;
+            padding: 5px 14px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid #d1c4e9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         /* --- 5. OPTIONS & INPUTS --- */
-        .options-wrapper {
-            margin-top: 15px;
-        }
         .options label {
             display: flex;
             align-items: center;
             width: 100%;
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            background: #fafafa;
-            border: 1px solid #E0E0E0;
-            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+            background: #ffffff;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 10px;
             cursor: pointer;
-            transition: all 0.2s;
-            box-sizing: border-box;
+            transition: all 0.2s ease;
         }
 
-        .options label:hover, .options label:focus-within {
-            background-color: #F3E5F5;
-            border-color: #BA68C8;
+        .options label:hover {
+            background-color: #f8f5ff;
+            border-color: #9c27b0;
         }
 
         .options label:has(input:checked) {
-            background-color: #E1BEE7; 
-            border-color: #9C27B0;
-            color: #4A148C;
-            font-weight: bold;
+            background-color: #f3e5f5;
+            border-color: #4A148C;
+            box-shadow: 0 0 0 1px #4A148C;
         }
 
         .options input[type="radio"] {
-            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            margin-right: 15px;
+            accent-color: #4A148C;
         }
 
         textarea {
             width: 100%;
             padding: 15px;
             border: 2px solid #E0E0E0;
-            background-color: #fafafa;
-            border-radius: 12px;
-            min-height: 100px;
-            transition: all 0.2s ease-in-out;
+            border-radius: 10px;
+            min-height: 120px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
             outline: none;
-            font-family: inherit;
-            box-sizing: border-box;
             -webkit-user-select: text;
             user-select: text;
         }
 
         textarea:focus {
-            background-color: #ffffff;
-            border-color: #9C27B0;
-            color: #000;
+            border-color: #4A148C;
+            color: #fff;
         }
 
         /* topic header */
@@ -1248,11 +1246,8 @@ function renderQuestions(questions, savedAnswers) {
             </div>`;
         } else {
             const valText = savedVal || '';
-            inputHtml = `
-                <div class="options-wrapper">
-                        <textarea placeholder="Type your answer here..." 
-                            onblur="saveAnswer('${q.question_id}', this.value)">${valText}</textarea>
-                </div>`;
+            inputHtml = `<textarea placeholder="Type your answer here..." 
+                            onblur="saveAnswer('${q.question_id}', this.value)">${savedVal || ''}</textarea>`;
         }
         
         htmlContent += `
