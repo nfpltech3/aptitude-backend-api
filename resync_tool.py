@@ -1,67 +1,66 @@
-# resync_tool.py
+# resync_tool.py (FIXED VERSION)
 from database import SessionLocal
-from models import TestSession
+from models import TestSession, Answer
 from services.zoho_sync import update_candidate_summary
-import time
-import json
+import json, time
 
 def manual_resync():
     db = SessionLocal()
     try:
-        # 1. Fetch all records that haven't been synced yet
+        # 1. Find sessions that are not synced
         unsynced_records = db.query(TestSession).filter(TestSession.is_synced == False).all()
-        
         print(f"Found {len(unsynced_records)} records to sync...")
 
-        # resync_tool.py (Updated Logic)
         for record in unsynced_records:
-            print(f"Syncing {record.candidate_name} (ID: {record.candidate_id})...")
+            print(f"Processing {record.candidate_name} (Session ID: {record.id})...")
             
-            answers_data = record.grading_cache
-
-            # 1. Handle double-encoding or raw strings
-            if isinstance(answers_data, str):
-                try:
-                    answers_data = json.loads(answers_data)
-                    # If it's STILL a string after one load, load it again (double-encoded)
-                    if isinstance(answers_data, str):
-                        answers_data = json.loads(answers_data)
-                except Exception:
-                    answers_data = [] # Fallback to empty list if corrupted
-
-            # 2. Safety check: ensure every item in the list is a dictionary
-            clean_answers = []
-            if isinstance(answers_data, list):
-                for item in answers_data:
-                    if isinstance(item, str):
-                        try:
-                            clean_answers.append(json.loads(item))
-                        except: continue
-                    else:
-                        clean_answers.append(item)
+            # 2. Fetch ACTUAL student answers from the Answer table
+            student_answers = db.query(Answer).filter(Answer.session_id == record.id).all()
             
-            # 3. Call sync function with the clean list
+            # 3. Reconstruct the answers_list using the grading_cache
+            # This matches the logic in your submit-test route
+            q_front_map = {str(q["question_id"]): q for q in (record.question_cache or [])}
+            q_grade_map = record.grading_cache or {}
+            
+            answers_payload = []
+            for a in student_answers:
+                q_id = str(a.question_id)
+                q_data = q_front_map.get(q_id, {})
+                q_grade_data = q_grade_map.get(q_id, {})
+
+                # Determine correct answer and marks
+                is_mcq = q_data.get("type") == "MCQ"
+                correct_val = q_grade_data.get("correct_mcq") if is_mcq else q_grade_data.get("correct_desc")
+                
+                answers_payload.append({
+                    "question_id": q_id,
+                    "question_text": q_data.get("text", "Unknown"),
+                    "question_type": q_data.get("type", "MCQ"),
+                    "topic": q_data.get("topic", "General"),
+                    "answer_text": a.answer_text,
+                    "correct_answer": correct_val or "Not specified",
+                    "marks_awarded": 0, # Note: You may want to call calculate_score here
+                    "max_marks": q_grade_data.get("max_marks", 1)
+                })
+
+            # 4. Push to Zoho
             success = update_candidate_summary(
                 zoho_id=record.candidate_id,
                 mcq_score=record.total_score,
                 status=record.status,
                 scheduled_end_time=record.end_time,
                 has_dept_test=record.has_department_test,
-                total_possible_marks=100,
+                total_possible_marks=100, 
                 violations=record.violation_count,
-                answers_list=clean_answers # Use the cleaned list
+                answers_list=answers_payload # Send the RECONSTRUCTED payload
             )
 
             if success:
-                # 3. Update the flag so it doesn't sync again
                 record.is_synced = True
                 db.commit()
                 print(f"Successfully synced {record.candidate_name}")
-            else:
-                print(f"Failed to sync {record.candidate_name}. Check Zoho report name.")
             
-            # Small delay to avoid Zoho API rate limits
-            time.sleep(1) 
+            time.sleep(1) # Rate limiting
 
     except Exception as e:
         print(f"An error occurred: {e}")
