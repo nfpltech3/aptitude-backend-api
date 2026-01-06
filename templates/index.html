@@ -803,6 +803,13 @@
         };
 
         handleKeyDown = (e) => {
+            // 1. Detect the "Return" (Enter) key on mobile/desktop
+            if (e.key === "Enter") {
+                window.isKeyboardAction = true;
+                // Reset after 2 seconds to allow the keyboard animation to finish
+                setTimeout(() => { window.isKeyboardAction = false; }, 2000);
+            }
+            
             if(e.key === "F12") { e.preventDefault(); e.stopPropagation(); }
             
             if(e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "J" || e.key === "j" || e.key === "C" || e.key === "c")) {
