@@ -94,7 +94,7 @@ def check_candidate_token(token: str, device_id: str = None, background_tasks: B
     alloc = None
     
     if session:
-        ref_time = session.created_at
+        ref_time = session.start_time if session.start_time else get_ist_time()
         zoho_id = session.candidate_id
     else:
         alloc = fetch_candidate_by_token(token)
