@@ -134,6 +134,8 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     # Map the dictionary values back to Zoho fields
     # Note: Ensure your Zoho field names stay consistent (e.g., 'Numerical_Score')
     for topic, scores in sectional_data.items():
+        if topic == "Departmental":
+            continue
         field_name = f"{topic.replace(' ', '_')}_Score"
         payload_data[field_name] = f"{scores['awarded']} / {scores['max']}"
     

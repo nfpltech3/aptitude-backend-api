@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 import os, json, random
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from datetime import datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
@@ -33,9 +34,9 @@ templates = Jinja2Templates(directory="templates")
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all domains (Safe for dev/ngrok)
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows GET, POST, etc.
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -58,18 +59,60 @@ class CandidateWebhook(BaseModel):
     name: str
     duration: int
     position: str
-    has_dept_test: str # "Yes" or "No"
+    has_dept_test: str
 
 @app.api_route("/", methods=["GET", "HEAD"])
 def home():
     return {"status": "alive", "msg": "Backend running"}
 
+def mark_token_expired_in_zoho(zoho_id: str):
+    try:
+        from services.zoho_sync import patch_candidate_fields
+
+        patch_candidate_fields(
+            zoho_id,
+            {
+                "Token_Status": "Expired"
+            }
+        )
+        print(f"Token marked expired in Zoho for ID {zoho_id}")
+    except Exception as e:
+        print(f"Failed to mark token expired for {zoho_id}: {e}")
+
+
 @app.get("/api/check-token")
-def check_candidate_token(token: str, device_id: str = None, db: Session = Depends(get_db)):
+def check_candidate_token(token: str, device_id: str = None, background_tasks: BackgroundTasks = None, db: Session = Depends(get_db)):
     token = token.strip()
 
     # 1. Check if token exists in DB
     session = crud.get_session_by_token(db, token)
+    now = get_ist_time()
+
+    ref_time = None
+    zoho_id = None
+    alloc = None
+    
+    if session:
+        ref_time = session.created_at
+        zoho_id = session.candidate_id
+    else:
+        alloc = fetch_candidate_by_token(token)
+        if not alloc:
+            raise HTTPException(status_code=404, detail="Invalid token")
+
+        zoho_id = str(alloc["ID"])
+        link_sent_on = alloc.get("Link_Sent_On")
+        if link_sent_on:
+            ref_time = datetime.strptime(link_sent_on, "%d-%b-%Y %H:%M:%S")
+
+    if ref_time and now > ref_time + timedelta(hours=24):
+        if background_tasks:
+            background_tasks.add_task(mark_token_expired_in_zoho, zoho_id)
+
+        raise HTTPException(
+            status_code=403,
+            detail="This test link has expired. Please contact HR."
+        )
     
     if session:
         if session.status in ["Submitted", "Auto-Submitted"]:
@@ -114,63 +157,16 @@ def check_candidate_token(token: str, device_id: str = None, db: Session = Depen
                 "instructions": "Click 'Start Assessment' to begin."
             }
             
-    # 2. Token not in DB - Check Zoho for fresh allocation
-    if not session:
-        print(f"Token {token} not in DB. Checking Zoho for fresh allocation...")
-        alloc = fetch_candidate_by_token(token)
-        if not alloc:
-            raise HTTPException(status_code=404, detail="Invalid token")
-
-        zoho_id = str(alloc["ID"])
-        # Check if user already has a session
-        existing_user_session = db.query(models.TestSession).filter(
-            models.TestSession.candidate_id == zoho_id
-        ).first()
-
-        if existing_user_session:
-            # User exists - check their status
-            if existing_user_session.status not in ["Submitted", "Auto-Submitted"]:
-                return {
-                    "status": "Already-Submitted", 
-                    "name": existing_user_session.candidate_name,
-                    "message": "You have already completed this assessment."
-                }
-            
-            if existing_user_session.status == "In-Progress":
-                # Keep the device lock but update token
-                existing_user_session.token = token
-                db.commit()
-                return {
-                    "status": "Device-Locked", 
-                    "name": existing_user_session.candidate_name,
-                    "message": "Your test is already in progress on another device."
-                }
-            
-            # Allocated status - allow new link
-            existing_user_session.token = token
-            existing_user_session.device_id = None  # Reset device lock
-            db.commit()
-            return {
-                "status": "New", 
-                "name": existing_user_session.candidate_name
-            }
-        
-    token_status = alloc.get("Token_Status") or alloc.get("Token_Status1") 
+    token_status = alloc.get("Token_Status") or alloc.get("Token_Status1")
     if token_status and token_status != "Valid":
-        raise HTTPException(
-            status_code=403, 
-            detail="This link has been invalidated. Please contact HR."
-        )
+        raise HTTPException(status_code=403, detail="This link has been invalidated.")
     
-    # Extract Candidate Data
     zoho_duration = alloc.get("Test_Duration_Minutes")
     duration_mins = int(zoho_duration) if zoho_duration else 40
     
     name_data = alloc.get("Candidate_Name")
-    candidate_name = name_data.get("display_value") if isinstance(name_data, dict) else name_data
-    if not candidate_name: candidate_name = "Candidate"
+    candidate_name = name_data.get("display_value") if isinstance(name_data, dict) else name_data or "Candidate"
 
-    # Position Logic
     pos_data = alloc.get("Position_Applied")
     position_name = "Unknown"
     if isinstance(pos_data, dict):
@@ -183,7 +179,6 @@ def check_candidate_token(token: str, device_id: str = None, db: Session = Depen
     raw_dept_flag = alloc.get("Has_Department_Test")
     has_dept_test = "Yes" if (raw_dept_flag == "Yes" or raw_dept_flag is True) else "No"
 
-    # Save to DB (So next time we hit the Optimized Path)
     crud.create_placeholder_session(
         db, 
         token=token, 

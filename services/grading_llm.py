@@ -10,7 +10,6 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
     """Uses Groq Cloud to semantically grade short answers."""
 
     if not user_ans or str(user_ans).strip() == "" or str(user_ans).lower() == "none":
-        print("Empty answer detected. Skipping LLM and awarding 0 marks.")
         return 0
     
     # Define a robust prompt for grading
