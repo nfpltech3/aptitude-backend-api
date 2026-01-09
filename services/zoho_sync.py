@@ -116,7 +116,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
         transcript_html += "<p>No answers recorded.</p>"
 
     # --- 2. SEND TO ZOHO ---
-    url = f"{BASE_URL}/report/Candidate_Allocation_Report/{zoho_id}"
+    url = f"{BASE_URL}/report/All_Candidate_Assessments/{zoho_id}"
     
     payload_data = {
         "Test_Status": status,
@@ -202,7 +202,7 @@ def mark_test_started(zoho_id):
     """
     Updates Zoho with the Start Time and changes Status to 'In Progress'.
     """
-    url = f"{BASE_URL}/report/Candidate_Allocation_Report/{zoho_id}"
+    url = f"{BASE_URL}/report/All_Candidate_Assessments/{zoho_id}"
     
     start_time_str = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
     

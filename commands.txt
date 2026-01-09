@@ -1,21 +1,21 @@
 
 # client id 
-# 1000.9JMFOC7NLKIFB02E3V7JLRVNEMXR7X
+# 1000.4V5L50UV7KOYFYTPC2Y6NB6N0YBT9K
 
 # client secret
-# cab560de77d657f4e6ab971376a6bb05222c88d21d
+# ea9c902ca1c35253a3067a0a8dda7a6641756a91e1
 
-https://accounts.zoho.in/oauth/v2/auth?scope=ZohoCreator.report.ALL,ZohoCreator.form.ALL,ZohoCreator.meta.ALL&client_id=1000.9JMFOC7NLKIFB02E3V7JLRVNEMXR7X&response_type=code&access_type=offline&prompt=consent&redirect_uri=http://localhost
+https://accounts.zoho.in/oauth/v2/auth?scope=ZohoCreator.report.ALL,ZohoCreator.form.ALL,ZohoCreator.meta.ALL&client_id=1000.4V5L50UV7KOYFYTPC2Y6NB6N0YBT9K&response_type=code&access_type=offline&prompt=consent&redirect_uri=https://aptitude-backend-b6ir.onrender.com/oauth/callback 
 
 # grant token -
-# 1000.9a2997e489775c54740a63977e406f26.589729b3247be9fbf018d014e1aae424
+# 1000.2361c098dffe6ace06d070950f9dbd7b.fff964480f736269e5b87ea25dd1c24e
 
 curl -X POST https://accounts.zoho.in/oauth/v2/token ^
 -d grant_type=authorization_code ^
--d client_id=1000.9JMFOC7NLKIFB02E3V7JLRVNEMXR7X ^
--d client_secret=cab560de77d657f4e6ab971376a6bb05222c88d21d ^
--d redirect_uri=http://localhost ^
--d code=1000.9a2997e489775c54740a63977e406f26.589729b3247be9fbf018d014e1aae424
+-d client_id=1000.4V5L50UV7KOYFYTPC2Y6NB6N0YBT9K ^
+-d client_secret=ea9c902ca1c35253a3067a0a8dda7a6641756a91e1 ^
+-d redirect_uri=https://aptitude-backend-b6ir.onrender.com/oauth/callback ^
+-d code=1000.2361c098dffe6ace06d070950f9dbd7b.fff964480f736269e5b87ea25dd1c24e
 
 # 1. Initialize the project configuration
 npm init -y

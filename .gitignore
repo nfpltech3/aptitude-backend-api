@@ -187,3 +187,4 @@ package.json
 www\index.html
 Assessment_Report.pdf
 create_doc.py
+.env old
