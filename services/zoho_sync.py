@@ -40,6 +40,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     # This dictionary will store: {"Topic Name": {"awarded": X, "max": Y}}
     sectional_data = {}
     calculated_total = 0
+    filtered_max_marks = 0
 
     if answers_list:
         for ans in answers_list:
@@ -55,7 +56,10 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             
             sectional_data[topic]["awarded"] += awarded_val
             sectional_data[topic]["max"] += max_q
-            calculated_total += awarded_val
+
+            if topic != "Departmental":
+                calculated_total += awarded_val
+                filtered_max_marks += max_q
     
     # --- 2. PREPARE TRANSCRIPT HTML ---
     transcript_html = "<h3 style='color: #333; border-bottom: 1px solid #ccc; padding-bottom: 10px;'>Assessment Performance Summary</h3>"
@@ -121,7 +125,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     payload_data = {
         "Test_Status": status,
         "Total_Score": str(calculated_total),
-        "Max_Possible_Marks": str(total_possible_marks),
+        "Max_Possible_Marks": str(filtered_max_marks),
         "Proctoring_Violations": violations,
         "Suspicious_Activity": "Yes" if violations > 0 else "No",
         "Token_Status": "Used",
