@@ -58,7 +58,9 @@ class CandidateWebhook(BaseModel):
     zoho_id: str
     name: str
     duration: int
-    position: str
+    # position: str
+    test_id: str
+    test_name: str
     has_dept_test: str
 
 @app.api_route("/", methods=["GET", "HEAD"])
@@ -78,7 +80,6 @@ def mark_token_expired_in_zoho(zoho_id: str):
         print(f"Token marked expired in Zoho for ID {zoho_id}")
     except Exception as e:
         print(f"Failed to mark token expired for {zoho_id}: {e}")
-
 
 @app.get("/api/check-token")
 def check_candidate_token(token: str, device_id: str = None, background_tasks: BackgroundTasks = None, db: Session = Depends(get_db)):
@@ -157,7 +158,7 @@ def check_candidate_token(token: str, device_id: str = None, background_tasks: B
                 "instructions": "Click 'Start Assessment' to begin."
             }
             
-    token_status = alloc.get("Token_Status") or alloc.get("Token_Status1")
+    token_status = alloc.get("Token_Status")
     if token_status and token_status != "Valid":
         raise HTTPException(status_code=403, detail="This link has been invalidated.")
     
@@ -167,14 +168,15 @@ def check_candidate_token(token: str, device_id: str = None, background_tasks: B
     name_data = alloc.get("Candidate_Name")
     candidate_name = name_data.get("display_value") if isinstance(name_data, dict) else name_data or "Candidate"
 
-    pos_data = alloc.get("Position_Applied")
-    position_name = "Unknown"
-    if isinstance(pos_data, dict):
-        if "display_value" in pos_data: position_name = pos_data["display_value"]
-        elif "Postion" in pos_data: position_name = pos_data["Postion"]
-        elif "Role_Name" in pos_data: position_name = pos_data["Role_Name"]
-    elif isinstance(pos_data, str):
-         if len(pos_data) < 20 and not pos_data.isdigit(): position_name = pos_data
+    # pos_data = alloc.get("Position_Applied")
+    test_data = alloc.get("Select_Test_Paper")
+    test_name = None
+    test_id = None
+    
+    # position_name = "Unknown"
+    if isinstance(test_data, dict):
+        test_name = test_data.get("display_value")
+        test_id = test_data.get("ID")
 
     raw_dept_flag = alloc.get("Has_Department_Test")
     has_dept_test = "Yes" if (raw_dept_flag == "Yes" or raw_dept_flag is True) else "No"
@@ -182,9 +184,11 @@ def check_candidate_token(token: str, device_id: str = None, background_tasks: B
     crud.create_placeholder_session(
         db, 
         token=token, 
-        zoho_id=alloc["ID"], 
+        zoho_id=alloc["ID"],
+        test_id=test_id,
+        test_name=test_name,
         duration_mins=duration_mins,
-        position_name=position_name,
+        # position_name=position_name,
         has_dept_test=has_dept_test,
         candidate_name=candidate_name
     )
@@ -249,24 +253,22 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
         # B. Clean & Standardize Data
         all_questions_clean = []
         for q in raw_questions:
-            raw_sub = q.get("Position_Relevant_To")
-            z_sub = "General"
+            # raw_sub = q.get("Test_Question_Mapping")
+            raw_mapping = q.get("Test_Question_Mapping")
+            # z_sub = "General"
+            mapped_paper_id = ""
             
-            if isinstance(raw_sub, dict):
+            if isinstance(raw_mapping, dict):
                 # Case 1: It's a Dictionary
-                z_sub = raw_sub.get("display_value", "General")
+                mapped_paper_id = raw_mapping.get("ID", "")
                 
-            elif isinstance(raw_sub, list) and len(raw_sub) > 0:
+            elif isinstance(raw_mapping, list) and len(raw_mapping) > 0:
                 # Case 2: It's a List
-                first_item = raw_sub[0]
-                if isinstance(first_item, dict):
-                    z_sub = first_item.get("display_value", "General")
-                else:
-                    z_sub = str(first_item)
+                mapped_paper_id = raw_mapping[0].get("ID", "")
                     
-            elif raw_sub and str(raw_sub).lower() != "null":
-                # Case 3: It's just a String
-                z_sub = str(raw_sub)
+            # elif raw_sub and str(raw_sub).lower() != "null":
+            #     # Case 3: It's just a String
+            #     z_sub = str(raw_sub)
 
             opts = [
                 str(q.get("Option_A", "")).strip(),
@@ -282,7 +284,8 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                 "text": q.get("Question_Text"),
                 "type": q.get("Question_Type", "MCQ"),
                 "topic": q.get("Topic"),
-                "sub_topic": z_sub,
+                # "sub_topic": z_sub,
+                "paper_id": mapped_paper_id,
                 "options": [o for o in opts if o],
                 "correct_mcq": correct_letter,
                 "correct_desc": q.get("Correct_Descriptive_Answer2", ""),
@@ -299,12 +302,12 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
         
         # -- Departmental Logic --
         if session.has_department_test == "Yes":
-            c_pos = (session.position_name or "").strip().lower()
+            c_pos = (session.test_id or "").strip().lower()
             
             if c_pos:
                 for q in all_questions_clean:
                     if q["topic"] == "Departmental":
-                        q_tag = q["sub_topic"].lower()
+                        q_tag = q["paper_id"].lower()
                         # Fuzzy match
                         if (q_tag in c_pos) or (c_pos in q_tag):
                             all_eligible_questions.append(q)
@@ -531,7 +534,9 @@ def add_candidate_webhook(data: CandidateWebhook, db: Session = Depends(get_db))
         token=data.token, 
         zoho_id=data.zoho_id, 
         duration_mins=data.duration,
-        position_name=data.position,
+        # position_name=data.position,
+        test_id=data.test_id,
+        test_name=data.test_name,
         has_dept_test=data.has_dept_test,
         candidate_name=data.name
     )

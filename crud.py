@@ -14,7 +14,7 @@ def get_session_by_token(db: Session, token: str):
         db.rollback()
         return db.query(TestSession).filter(TestSession.token == token).first()
 
-def create_placeholder_session(db: Session, token: str, zoho_id: str, duration_mins: int, position_name:str, has_dept_test: str, candidate_name: str):
+def create_placeholder_session(db: Session, token: str, zoho_id: str, duration_mins: int, test_id:str, test_name:str, has_dept_test: str, candidate_name: str):
     """Creates a session in 'Allocated' state without starting the timer."""
     existing = db.query(TestSession).filter(TestSession.token == token).first()
     if existing:
@@ -31,7 +31,9 @@ def create_placeholder_session(db: Session, token: str, zoho_id: str, duration_m
         total_score=0,
         violation_count=0,
         duration_minutes=duration_mins,
-        position_name=position_name,
+        # position_name=position_name,
+        test_id=test_id,
+        test_name=test_name,
         has_department_test=has_dept_test
     )
     try:
@@ -66,3 +68,8 @@ def increment_violation(db: Session, session_id: int):
         db.refresh(session)
         return session.violation_count
     return 0
+
+# Helper for Sync Tool
+def get_answers_by_session(db: Session, session_id: int):
+    from models import Answer
+    return db.query(Answer).filter(Answer.session_id == session_id).all()

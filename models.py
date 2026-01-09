@@ -1,5 +1,6 @@
 # models.py
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Boolean
+from sqlalchemy.orm import relationship
 from database import Base
 from services.timer import get_ist_time
 
@@ -17,7 +18,9 @@ class TestSession(Base):
     total_score = Column(Integer, default=0)
     submitted_at = Column(DateTime, nullable=True)
     duration_minutes = Column(Integer, default=40)
-    position_name = Column(String, nullable=True)
+    # position_name = Column(String, nullable=True)
+    test_id = Column(String, index=True) 
+    test_name = Column(String)
     has_department_test = Column(String, default="No")
     violation_count = Column(Integer, default=0)
     device_id = Column(String, nullable=True)
@@ -26,6 +29,8 @@ class TestSession(Base):
     
     question_cache = Column(JSON, nullable=True)
     grading_cache = Column(JSON, nullable=True)
+
+    answers = relationship("Answer", backref="session", cascade="all, delete-orphan")
 
 class Answer(Base):
     __tablename__ = "answers"
