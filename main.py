@@ -288,7 +288,7 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
                 "paper_id": mapped_paper_id,
                 "options": [o for o in opts if o],
                 "correct_mcq": correct_letter,
-                "correct_desc": q.get("Correct_Descriptive_Answer2", ""),
+                "correct_desc": q.get("Correct_Descriptive_Answer", ""),
                 "max_marks": int(q.get("Max_Marks", 1) or 1)
             })
 
@@ -400,7 +400,8 @@ async def serve_test_page(request: Request, token: str, db: Session = Depends(ge
         "request": request,
         "token": token,
         "candidate_name": session.candidate_name,
-        "position": session.position_name
+        "test_name": session.test_name,
+        "position": session.test_name
     })
 
 @app.post("/save-answer")

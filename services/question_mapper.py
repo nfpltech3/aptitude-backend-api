@@ -38,7 +38,7 @@ def sanitize_questions(raw_questions_list):
             "topic": q.get("Topic", "General"),
             "max_marks": int(q.get("Max_Marks", 1) or 1),
             "correct_mcq": correct_val_raw,
-            "correct_desc": q.get("Correct_Descriptive_Answer2")
+            "correct_desc": q.get("Correct_Descriptive_Answer")
         }
 
     return safe_questions, grading_cache
