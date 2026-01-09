@@ -488,9 +488,8 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
 
 def perform_zoho_sync(candidate_id, score, status, start_time, end_time, has_dept_test, total_possible, violations, answers, session_id):
     db = SessionLocal()
+    print(f"🔁 Starting Zoho sync for session {session_id}")
     try:
-        print(f"Starting Background Sync for {candidate_id}...")
-        
         success = update_candidate_summary(
             zoho_id=candidate_id, 
             mcq_score=score, 
@@ -502,6 +501,7 @@ def perform_zoho_sync(candidate_id, score, status, start_time, end_time, has_dep
             violations=violations,
             answers_list=answers
         )
+        print(f"✅ Zoho update response: {success}")
         
         if success:
             session_rec = db.query(models.TestSession).filter(models.TestSession.id == session_id).first()
@@ -515,7 +515,7 @@ def perform_zoho_sync(candidate_id, score, status, start_time, end_time, has_dep
         #     push_candidate_answers(candidate_id, answers)
         
     except Exception as e:
-        print(f"CRITICAL: Background Sync Failed for {candidate_id}: {e}")
+        print(f"❌ Zoho sync failed for session {session_id}: {e}")
     
     finally:
         db.close()

@@ -124,7 +124,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
         "Max_Possible_Marks": str(total_possible_marks),
         "Proctoring_Violations": violations,
         "Suspicious_Activity": "Yes" if violations > 0 else "No",
-        "Token_Status": "Invalid",
+        "Token_Status": "Used",
         "Submitted_On": actual_submission_time,
         "Test_Start_Time": start_time_str,
         "Test_End_Time": deadline_time,
