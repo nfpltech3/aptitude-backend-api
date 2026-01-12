@@ -338,6 +338,38 @@
             text-align: center;
         }
 
+        /* SECTION NAVIGATION */
+        #section-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+            position: sticky;
+            top: 70px; /* Below the timer */
+            z-index: 999;
+        }
+
+        .section-btn {
+            flex: 1;
+            max-width: 200px;
+            padding: 10px;
+            border: 2px solid var(--primary-purple);
+            background: white;
+            color: var(--primary-purple);
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .section-btn.active {
+            background: var(--primary-purple);
+            color: white;
+        }
+
+        /* Hide departmental questions by default */
+        .q-dept { display: none; }
+
         @media (max-width: 480px) {
             body { 
                 padding: 10px; /* Consistent spacing around the screen edges */
@@ -440,11 +472,15 @@
     </div>
 
     <div id="test-interface" class="hidden">
-        <div id="questions-container">
-            </div>
+        <div id="section-nav">
+            <button id="btn-general" class="section-btn active" onclick="switchSection('general')">General Aptitude</button>
+            <button id="btn-dept" class="section-btn" onclick="switchSection('dept')">Departmental Section</button>
+        </div>
+
+        <div id="questions-container"></div>
         
         <div class="submit-container">
-            <button class="submit-btn" onclick="submitTest()">Submit</button>
+            <button class="submit-btn" onclick="submitTest()">Submit Assessment</button>
         </div>
     </div>
 
@@ -608,6 +644,12 @@
             // addWatermark(data.candidate_name, data.candidate_id);
 
             renderQuestions(data.questions, data.saved_answers || {});
+
+            const deptBtn = document.getElementById('btn-dept');
+            const hasDept = data.questions.some(q => q.topic === "Departmental");
+            if (!hasDept) {
+                deptBtn.style.display = 'none';
+            }
 
         } catch (err) {
             console.error(err);
@@ -1252,6 +1294,9 @@ function renderQuestions(questions, savedAnswers) {
         
         // --- A. INSERT HEADER IF TOPIC CHANGED ---
         const thisTopic = q.topic || "General"; 
+
+        // Determine section class
+        const sectionClass = (q.topic === "Departmental") ? "q-dept" : "q-general";
         
         if (thisTopic !== currentTopic) {
             currentTopic = thisTopic;
@@ -1288,7 +1333,7 @@ function renderQuestions(questions, savedAnswers) {
         }
         
         htmlContent += `
-            <div class="question-card">
+        <div class="question-card ${sectionClass}" data-topic="${q.topic}">
                 <div class="marks-display">${q.max_marks || 1} Marks</div>
                 <div class="question-header">
                     <div class="question-main">
@@ -1301,6 +1346,28 @@ function renderQuestions(questions, savedAnswers) {
     });
 
     container.innerHTML = htmlContent;
+}
+
+function switchSection(sectionType) {
+    const generalQuestions = document.querySelectorAll('.q-general');
+    const deptQuestions = document.querySelectorAll('.q-dept');
+    const btnGeneral = document.getElementById('btn-general');
+    const btnDept = document.getElementById('btn-dept');
+
+    if (sectionType === 'general') {
+        generalQuestions.forEach(el => el.style.display = 'block');
+        deptQuestions.forEach(el => el.style.display = 'none');
+        btnGeneral.classList.add('active');
+        btnDept.classList.remove('active');
+    } else {
+        generalQuestions.forEach(el => el.style.display = 'none');
+        deptQuestions.forEach(el => el.style.display = 'block');
+        btnGeneral.classList.remove('active');
+        btnDept.classList.add('active');
+    }
+    
+    // Scroll to top of the interface
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
     async function saveAnswer(qid, val) {

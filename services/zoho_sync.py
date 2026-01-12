@@ -107,7 +107,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             transcript_html += f"</div>"
             transcript_html += f"<div style='margin-bottom:8px; color:#222; font-size:14px;'>{q_text}</div>"
             transcript_html += f"<div style='background-color:{bg_color}; padding:8px; border-left:3px solid #ccc; font-size:13px;'>"
-            transcript_html += f"<b>Student Answer:</b> {ans_text}"
+            transcript_html += f"<b>Candidate Answer:</b> {ans_text}"
             transcript_html += "</div>"
 
             if str(awarded) != str(max_marks):
