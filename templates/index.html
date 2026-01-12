@@ -1184,19 +1184,33 @@
 
     async function submitTest(isAuto = false) {
     if (!isAuto && !isSubmitting) {
+        window.removeEventListener("blur", handleBlur);
+        if (!isMobile()) {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        }
+
         const totalQuestions = document.querySelectorAll('.question-card').length;
         const answeredCount = document.querySelectorAll('input[type="radio"]:checked').length + 
                               Array.from(document.querySelectorAll('textarea')).filter(t => t.value.trim() !== '').length;
 
         let confirmationMsg = "Are you sure you want to submit your assessment?";
-
-        // Check if any questions are left
         if (answeredCount < totalQuestions) {
             const remaining = totalQuestions - answeredCount;
             confirmationMsg = `⚠️ You have ${remaining} question(s) left to answer.\n\nAre you sure you want to submit anyway?`;
         }
 
-        if (!confirm(confirmationMsg)) return;
+        // The browser will likely exit fullscreen here
+        const confirmed = confirm(confirmationMsg);
+
+        if (!confirmed) {
+            // 🔄 STEP 2: RESUME PROCTORING (Candidate chose to stay)
+            window.addEventListener("blur", handleBlur);
+            if (!isMobile()) {
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+                requestFullScreen(); // Force them back into fullscreen
+            }
+            return; 
+        }
         isSubmitting = true;
     }
 
