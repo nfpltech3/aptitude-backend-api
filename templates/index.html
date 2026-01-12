@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no viewport-fit=cover">
     <title>Candidate Assessment</title>
     <style>
         :root {
@@ -27,9 +27,10 @@
         #timer-container {
             display: flex;
             justify-content: center;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             position: sticky;
-            top: 10px;
+            top: env(safe-area-inset-top, 10px);
+            padding-top: 10px;
             z-index: 1000;
         }
 
@@ -241,7 +242,7 @@
 
         /* --- WELCOME SCREEN --- */
         #welcome-screen {
-            max-width: 650px;
+            max-width: 600px;
             margin: 40px auto;
             background: white;
             padding: 40px;
@@ -449,7 +450,7 @@
     </div>
 
     <div id="welcome-screen">
-        <h2 id="welcome-msg" style="color:#4A148C; margin-bottom: 10px;">Welcome to the Assessment</h2>
+        <h1 id="welcome-msg" style="color:#4A148C; margin-bottom: 10px;">Welcome to the Assessment</h1>
         <p style="color:#666; margin-top:0;">Please read the rules carefully before starting.</p>
         
         <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
@@ -457,18 +458,21 @@
         <div style="text-align:left; margin-bottom:30px; font-size: 15px; color: #333;">
             <div style="background:#fff3cd; color:#856404; padding:15px; border-radius:8px; margin-bottom:20px; border: 1px solid #ffeeba;">
                 <h3 style="margin-top:0; color:#856404;">⚠️ STRICT ANTI-CHEATING ACTIVE</h3>
+                <p style="margin-bottom:0; font-weight:bold; color:#dc3545;">
+                    TAB SWITCHING WILL BE FLAGGED.
+                </p>
                 <ul style="margin-bottom:0; font-weight:bold; color:#dc3545; padding-left: 20px;">
                     <li>STRICT TAB MONITORING: Leaving this window is prohibited.</li>
-                    <li>NOTIFICATION POLICY: Do not stay or stare at notifications for a long time; focus must remain on the test area.</li>
+                    
                 </ul>
             </div>
             
             <strong><u>Guidelines:</u></strong>
             <ul style="margin-top:10px; padding-left:20px; line-height: 1.6;">
                 <li><b>Auto-Submit:</b> The timer will begin once you start the test. The test will automatically submit when the timer expires.</li>
-                <li>Provide direct and concise answers</li>
-                <li><b>No Tab Switching:</b> Navigating away from the test app will trigger a violation and potential auto-submission.</li>
+                <li>NOTIFICATION POLICY: Do not stay or stare at notifications for a long time; focus must remain on the test area.</li>
                 <li><b>Screenshots:</b> Disabled. Attempts will be logged.</li>
+                <li>Provide direct and concise answers</li>
             </ul>
         </div>
         
