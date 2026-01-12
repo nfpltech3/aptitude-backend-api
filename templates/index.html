@@ -1184,7 +1184,19 @@
 
     async function submitTest(isAuto = false) {
     if (!isAuto && !isSubmitting) {
-        if(!confirm("Are you sure you want to submit?")) return;
+        const totalQuestions = document.querySelectorAll('.question-card').length;
+        const answeredCount = document.querySelectorAll('input[type="radio"]:checked').length + 
+                              Array.from(document.querySelectorAll('textarea')).filter(t => t.value.trim() !== '').length;
+
+        let confirmationMsg = "Are you sure you want to submit your assessment?";
+
+        // Check if any questions are left
+        if (answeredCount < totalQuestions) {
+            const remaining = totalQuestions - answeredCount;
+            confirmationMsg = `⚠️ You have ${remaining} question(s) left to answer.\n\nAre you sure you want to submit anyway?`;
+        }
+
+        if (!confirm(confirmationMsg)) return;
         isSubmitting = true;
     }
 
@@ -1198,7 +1210,7 @@
     window.removeEventListener("pagehide", handlePageHide);
     document.removeEventListener("keydown", handleKeyDown);
     document.removeEventListener("keyup", handleKeyUp);
-    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    if (document.exitFullscreen) document.exitFullscreen().catch(e => {});
 
     const allAudio = document.querySelectorAll('audio');
     allAudio.forEach(audio => {
@@ -1221,10 +1233,7 @@
     document.onvisibilitychange = null;
 
     document.getElementById("test-interface").classList.remove("content-blur");
-    
-    if (document.exitFullscreen) document.exitFullscreen().catch(e => {});
-
-    document.body.innerHTML = "<h1>Submitting... Please wait.</h1>";
+    document.body.innerHTML = "<div style='text-align:center; margin-top:100px;'><h1>Submitting...</h1><p>Please do not close this window.</p></div>";
     
     localStorage.removeItem(`warnings_${token}`);
 
@@ -1252,13 +1261,9 @@
             localStorage.removeItem(`warnings_${token}`);
             localStorage.removeItem("test_active_" + token)
 
-            document.body.innerHTML = `
-                <div style='text-align:center; margin-top:50px;'>
-                    <h1 style='color:green;'>Test Submitted Successfully!</h1>
-                    <button onclick="window.AndroidInterface.closeApp()" style="padding:15px;">Exit App</button>
-                </div>`;
+            showFinalSuccessScreen();
         } else {
-            throw new Error("Server responded with error");
+            throw new Error("Submission failed");
         }
         // Tell the Android App to delete the token & unlock screen
         if (typeof Android !== "undefined" && Android.testFinished) {
@@ -1267,7 +1272,7 @@
             
     } catch (err) {
         console.error(err);
-        document.body.innerHTML = "<h1>Submission Error. Please check your internet and try again.</h1>";
+        document.body.innerHTML = "<h1 style='color:red; text-align:center;'>Submission Error. Please check your internet and try again.</h1>";
     }
     
     localStorage.removeItem("test_active_" + token);
