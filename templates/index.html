@@ -1314,7 +1314,6 @@ function renderQuestions(questions, savedAnswers) {
 
         // --- A. INSERT HEADER IF TOPIC CHANGED ---
         const thisTopic = q.topic || "General"; 
-
         if (thisTopic !== currentTopic) {
             currentTopic = thisTopic;
             htmlContent += `
@@ -1366,6 +1365,8 @@ function renderQuestions(questions, savedAnswers) {
     });
 
     container.innerHTML = htmlContent;
+
+    updateProgress();
 }
 
 function switchSection(sectionType) {
@@ -1407,8 +1408,7 @@ function switchSection(sectionType) {
         const allCards = document.querySelectorAll('.question-card');
         
         // 2. Initialize counters
-        let generalTotal = 0, generalAnswered = 0;
-        let deptTotal = 0, deptAnswered = 0;
+        let generalTotal = 0, generalAnswered = 0, deptTotal = 0, deptAnswered = 0;
 
         allCards.forEach(card => {
             const topic = card.getAttribute('data-topic');
