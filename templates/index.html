@@ -343,7 +343,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            justify-content: first baseline;
+            justify-content: center;
             position: sticky;
             top: 70px; /* Below the timer */
             z-index: 999;
@@ -1292,6 +1292,18 @@ function renderQuestions(questions, savedAnswers) {
     questions.forEach((q, index) => {
         const qIdStr = String(q.question_id);
         const savedVal = savedAnswers[qIdStr];
+
+        // --- A. INSERT HEADER IF TOPIC CHANGED ---
+        const thisTopic = q.topic || "General"; 
+
+        if (thisTopic !== currentTopic) {
+            currentTopic = thisTopic;
+            htmlContent += `
+                <div class="topic-header">
+                    <h3>${currentTopic} Section</h3>
+                    <hr>
+                </div>`;
+        }
         
         // Determine section class
         const sectionClass = (q.topic === "Departmental") ? "q-dept" : "q-general";
