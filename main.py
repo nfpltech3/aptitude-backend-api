@@ -316,7 +316,7 @@ def start_test_session(data: dict, db: Session = Depends(get_db)):
         random.shuffle(all_eligible_questions)
 
         # D. Sort by Topic Priority
-        topic_priority = {"Numerical": 2, "Verbal": 3, "Departmental": 1}
+        topic_priority = {"Numerical": 1, "Verbal": 2, "Departmental": 3}
         selected_questions = sorted(
             all_eligible_questions, 
             key=lambda q: topic_priority.get(q["topic"], 99)

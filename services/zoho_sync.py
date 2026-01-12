@@ -62,10 +62,12 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
                 filtered_max_marks += max_q
     
     # --- 2. PREPARE TRANSCRIPT HTML ---
+    transcript_priority = {"Departmental": 0, "Numerical": 1, "Verbal": 2}
     transcript_html = "<h3 style='color: #333; border-bottom: 1px solid #ccc; padding-bottom: 10px;'>Assessment Performance Summary</h3>"
     current_topic = None
     
     if answers_list:
+        answers_list.sort(key=lambda x: transcript_priority.get(x.get('topic', 'General'), 99))
         for i, ans in enumerate(answers_list, 1):
             topic = ans.get('topic', 'General')
             
