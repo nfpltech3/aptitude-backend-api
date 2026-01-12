@@ -343,7 +343,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            justify-content: center;
+            justify-content: first baseline;
             position: sticky;
             top: 70px; /* Below the timer */
             z-index: 999;
@@ -473,8 +473,9 @@
 
     <div id="test-interface" class="hidden">
         <div id="section-nav">
-            <button id="btn-general" class="section-btn active" onclick="switchSection('general')">General Aptitude</button>
-            <button id="btn-dept" class="section-btn" onclick="switchSection('dept')">Departmental Section</button>
+            <button id="btn-general" class="section-btn active" onclick="switchSection('general')">General Aptitude <span id="count-general">(0/0)</span>
+            </button>
+            <button id="btn-dept" class="section-btn" onclick="switchSection('dept')">Departmental Section <span id="count-dept">(0/0)</span></button>
         </div>
 
         <div id="questions-container"></div>
@@ -1292,20 +1293,8 @@ function renderQuestions(questions, savedAnswers) {
         const qIdStr = String(q.question_id);
         const savedVal = savedAnswers[qIdStr];
         
-        // --- A. INSERT HEADER IF TOPIC CHANGED ---
-        const thisTopic = q.topic || "General"; 
-
         // Determine section class
         const sectionClass = (q.topic === "Departmental") ? "q-dept" : "q-general";
-        
-        if (thisTopic !== currentTopic) {
-            currentTopic = thisTopic;
-            htmlContent += `
-                <div class="topic-header">
-                    <h3>${currentTopic} Section</h3>
-                    <hr>
-                </div>`;
-        }
 
         let inputHtml = '';
         if (q.type === 'MCQ') {
@@ -1383,12 +1372,43 @@ function switchSection(sectionType) {
     }
 
     function updateProgress() {
-        const totalQuestions = document.querySelectorAll('.question-card').length;
-        // Count how many radios are checked OR textareas have value
-        const answered = document.querySelectorAll('input[type="radio"]:checked').length + 
-                        Array.from(document.querySelectorAll('textarea')).filter(t => t.value.trim() !== '').length;
+        // 1. Get all question cards
+        const allCards = document.querySelectorAll('.question-card');
         
-        const percent = (answered / totalQuestions) * 100;
+        // 2. Initialize counters
+        let generalTotal = 0, generalAnswered = 0;
+        let deptTotal = 0, deptAnswered = 0;
+
+        allCards.forEach(card => {
+            const topic = card.getAttribute('data-topic');
+            const isDept = (topic === "Departmental");
+            
+            // Check if this specific card is answered
+            // For MCQs: check if any radio is checked inside this card
+            const hasRadioChecked = card.querySelector('input[type="radio"]:checked') !== null;
+            // For Textareas: check if the value is not empty
+            const textarea = card.querySelector('textarea');
+            const hasTextValue = textarea && textarea.value.trim() !== '';
+
+            const isAnswered = hasRadioChecked || hasTextValue;
+
+            if (isDept) {
+                deptTotal++;
+                if (isAnswered) deptAnswered++;
+            } else {
+                generalTotal++;
+                if (isAnswered) generalAnswered++;
+            }
+        });
+
+        // 3. Update Button Labels
+        document.getElementById('count-general').innerText = `(${generalAnswered}/${generalTotal})`;
+        document.getElementById('count-dept').innerText = `(${deptAnswered}/${deptTotal})`;
+
+        // 4. Update Global Progress Bar (Top of screen)
+        const totalQuestions = generalTotal + deptTotal;
+        const totalAnswered = generalAnswered + deptAnswered;
+        const percent = totalQuestions > 0 ? (totalAnswered / totalQuestions) * 100 : 0;
         document.getElementById('progress-bar').style.width = percent + "%";
     }
 
