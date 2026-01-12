@@ -242,18 +242,25 @@
 
         /* --- WELCOME SCREEN --- */
         #welcome-screen {
+            width: 100%;
             max-width: 600px;
-            margin: 40px auto;
+            margin: 20px auto;
             background: white;
-            padding: 40px;
+            padding: clamp(20px, 5vw, 40px);
             border-radius: 20px;
             border: 1px solid #eee;
             box-shadow: 0 5px 20px rgba(0,0,0,0.05);
             text-align: center;
+            box-sizing: border-box;
+            overflow-wrap: break-word;
         }
 
         #welcome-msg {
-            text-align: left;
+            color: #4A148C;
+            margin-bottom: 10px;
+            font-size: clamp(1.5rem, 6vw, 2.2rem); 
+            line-height: 1.2;
+            word-wrap: break-word;
         }
 
         textarea, input[type="text"] {
@@ -410,6 +417,17 @@
             .question-text { 
                 font-size: 0.95rem; /* Better readability on small screens */
             }
+            #welcome-screen {
+                padding: 20px 15px; /* Smaller padding on sides */
+                margin: 10px auto;
+                border-radius: 12px;
+                width: 100%;
+            }
+            
+            #welcome-msg {
+                /* Extra safety for very long names on mobile */
+                font-size: 1.4rem; 
+            }
         }
 
         @media print {
@@ -454,7 +472,7 @@
     </div>
 
     <div id="welcome-screen">
-        <h1 id="welcome-msg" style="color:#4A148C; margin-bottom: 10px;">Welcome to the Assessment</h1>
+        <h1 id="welcome-msg">Welcome to the Assessment</h1>
         <p style="color:#666; margin-top:0;">Please read the rules carefully before starting.</p>
         
         <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
