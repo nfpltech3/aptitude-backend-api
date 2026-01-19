@@ -31,9 +31,11 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
     6. If the answer contains any incorrect or contradictory statement → score 0.
     7. Do not assume intent; judge only what is written.
     8. Be conservative: when in doubt, score 0.
+    9. If the Reference Answer is a single word or short phrase, and the Student Answer clearly states that word/phrase as the conclusion (even inside a sentence), then score must be 1.
+    Provide a brief 1-sentence explanation for the score.
 
     Output format (JSON only, no extra text):
-    {{{{"score": 0}}}} or {{{{"score": 1}}}}
+    Format: {{"score": <int>, "reason": "<string>"}}
     """
 
     try:
@@ -54,8 +56,10 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
         
         # Parse result
         result = json.loads(chat_completion.choices[0].message.content)
-        return int(result.get("score", 0))
+        return {
+            "score": int(result.get("score", 0)),
+            "reason": result.get("reason", "No reason provided")
+        }
         
     except Exception as e:
-        print(f"Groq LLM Grading Error: {e}")
-        return 0
+        return {"score": 0, "reason": f"LLM Grading Error: {str(e)}"}

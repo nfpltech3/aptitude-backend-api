@@ -84,13 +84,17 @@ def calculate_score(session: TestSession, db: Session):
         elif q_type == "Short Descriptive":
             display_correct = q_data.get("correct_desc", "")
 
-            llm_score = get_llm_grade(u_ans_display, display_correct, max_marks)
+            llm_result = get_llm_grade(u_ans_display, display_correct, max_marks)
+            llm_score = llm_result.get("score", 0)
+            llm_reason = llm_result.get("reason", "")
+            
             if llm_score > 0:
                 current_q_score = llm_score
                 status = "Correct"
             elif any(check_match(u_ans_display, opt) for opt in str(display_correct).split('|')):
                 current_q_score = max_marks
                 status = "Correct"
+                llm_reason = "Exact match found in reference options."
             
             total_score += current_q_score
             
@@ -103,7 +107,8 @@ def calculate_score(session: TestSession, db: Session):
             "answer_text": display_student,
             "correct_answer": display_correct,
             "marks_awarded": status if status == "Manual" else current_q_score,
-            "max_marks": max_marks
+            "max_marks": max_marks,
+            "grading_reason": llm_reason if q_type == "Short Descriptive" else "Standard MCQ Logic"
         })
             
     print(f"--- 🏆 AUTOMATED SCORE: {total_score} ---\n")
