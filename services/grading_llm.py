@@ -6,7 +6,7 @@ import json
 # Initialize the Groq client
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
+def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> dict:
     """Uses Groq Cloud to semantically grade short answers."""
 
     if not user_ans or str(user_ans).strip() == "" or str(user_ans).lower() == "none":
