@@ -14,7 +14,7 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> dict:
     
     # Define a robust prompt for grading
     prompt = f"""
-    You are grading a short-answer question using binary scoring.
+    Evaluate the Student Answer against the Reference Answer.
 
     Reference Answer:
     {reference_ans}
@@ -22,18 +22,16 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> dict:
     Student Answer:
     {user_ans}
 
-    Grading Rules (STRICT):
-    1. Decide whether the Student Answer is correct or incorrect overall.
-    2. If the Student Answer is blank, meaningless, or irrelevant → score 0.
-    3. Rounded or approximate numeric values are acceptable if reasonably close.
-    4. Units may be ignored.
-    5. Explanations are allowed, but the final conclusion must be correct.
-    6. If the answer contains any incorrect or contradictory statement → score 0.
-    7. Do not assume intent; judge only what is written.
-    8. Be conservative: when in doubt, score 0.
-    9. If the Reference Answer is a single word or short phrase, and the Student Answer clearly states that word/phrase as the conclusion (even inside a sentence), then score must be 1.
-    Provide a brief 1-sentence explanation for the score.
+    Grading Rules (BINARY – 0 or 1 ONLY):
+    1. Give full marks ({max_marks}) if the core meaning or numeric value is correct.
+    2. Ignore extra characters or units (e.g., '1125p', '1125 pages', '1125').
+    3. Treat singular and plural forms as equivalent (e.g., 'letter' and 'letters').
+    4. Accept rounded or approximate numeric values if reasonably close.
+    5. Ignore minor typos or formatting issues (e.g., '0..11' ≈ '0.11').
+    6. Give 0 only if the answer is logically wrong, irrelevant, contradictory, or blank.
+    7. Judge correctness by meaning, not exact text match.
 
+    Provide a brief 1-sentence explanation for the score.
     Output format (JSON only, no extra text):
     Format: {{"score": <int>, "reason": "<string>"}}
     """
