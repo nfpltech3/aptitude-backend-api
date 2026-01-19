@@ -85,6 +85,7 @@ def calculate_score(session: TestSession, db: Session):
             display_correct = q_data.get("correct_desc", "")
 
             llm_result = get_llm_grade(u_ans_display, display_correct, max_marks)
+            print(f"DEBUG: llm_result type is {type(llm_result)} and value is {llm_result}")
             llm_score = llm_result.get("score", 0)
             llm_reason = llm_result.get("reason", "")
             
