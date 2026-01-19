@@ -10,7 +10,7 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> dict:
     """Uses Groq Cloud to semantically grade short answers."""
 
     if not user_ans or str(user_ans).strip() == "" or str(user_ans).lower() == "none":
-        return 0
+        return {"score": 0, "reason": "No answer provided by the candidate."}
     
     # Define a robust prompt for grading
     prompt = f"""
