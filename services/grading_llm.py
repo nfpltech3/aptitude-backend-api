@@ -14,17 +14,26 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
     
     # Define a robust prompt for grading
     prompt = f"""
-    Compare 'Student Answer' against 'Reference Answer'.
-    Reference: {reference_ans}
-    Student: {user_ans}
-    
-    Rules:
-    - If the Student Answer is blank or irrelevant, the score must be 0.
-    - Ignore minor typos and case (e.g., 'Tinaa' = 'Tina').
-    - Focus on intent and meaning, not perfect spelling.
-    
-    Score: 0 to {max_marks}.
-    Format: {{"score": <integer>}}
+    You are grading a short-answer question using binary scoring.
+
+    Reference Answer:
+    {reference_ans}
+
+    Student Answer:
+    {user_ans}
+
+    Grading Rules (STRICT):
+    1. Decide whether the Student Answer is correct or incorrect overall.
+    2. If the Student Answer is blank, meaningless, or irrelevant → score 0.
+    3. Rounded or approximate numeric values are acceptable if reasonably close.
+    4. Units may be ignored.
+    5. Explanations are allowed, but the final conclusion must be correct.
+    6. If the answer contains any incorrect or contradictory statement → score 0.
+    7. Do not assume intent; judge only what is written.
+    8. Be conservative: when in doubt, score 0.
+
+    Output format (JSON only, no extra text):
+    {"score": 1} or {"score": 0}
     """
 
     try:
