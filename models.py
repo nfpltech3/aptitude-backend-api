@@ -40,5 +40,5 @@ class Answer(Base):
     question_id = Column(String)
     answer_text = Column(Text)
     saved_at = Column(DateTime, default=get_ist_time)
-    marks_awarded = Column(Integer, default=0)
-    grading_reason = Column(Text, nullable=True)
+    marks_awarded = Column(String)
+    grading_reason = Column(Text)
