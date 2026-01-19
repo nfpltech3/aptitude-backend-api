@@ -97,7 +97,17 @@ def calculate_score(session: TestSession, db: Session):
                 llm_reason = "Exact match found in reference options."
             
             total_score += current_q_score
-            
+        
+        db_answer = db.query(Answer).filter(
+            Answer.session_id == session.id, 
+            Answer.question_id == q_id
+        ).first()
+
+        if db_answer:
+            # Update the physical columns in the database
+            db_answer.marks_awarded = str(status if status == "Manual" else current_q_score)
+            db_answer.grading_reason = llm_reason if q_type == "Short Descriptive" else "Standard MCQ Logic"
+
         # Prepare for Zoho Transcript & Sectional calculation
         enriched_answers.append({
             "question_id": q_id,
@@ -110,6 +120,7 @@ def calculate_score(session: TestSession, db: Session):
             "max_marks": max_marks,
             "grading_reason": llm_reason if q_type == "Short Descriptive" else "Standard MCQ Logic"
         })
-            
+
+    db.commit() 
     print(f"--- 🏆 AUTOMATED SCORE: {total_score} ---\n")
     return total_score, enriched_answers, total_possible
