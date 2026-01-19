@@ -33,7 +33,7 @@ def get_llm_grade(user_ans: str, reference_ans: str, max_marks: int) -> int:
     8. Be conservative: when in doubt, score 0.
 
     Output format (JSON only, no extra text):
-    {"score": 1} or {"score": 0}
+    {{{{"score": 0}}}} or {{{{"score": 1}}}}
     """
 
     try:
