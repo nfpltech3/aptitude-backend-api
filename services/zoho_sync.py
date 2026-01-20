@@ -113,19 +113,20 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             transcript_html += f"<b>Candidate Answer:</b> {ans_text}"
             transcript_html += "</div>"
 
-            if str(awarded) != str(max_marks):
-                transcript_html += f"<div style='background-color:#f0f7ff; padding:8px; border-left:3px solid #007bff; font-size:13px; color:#0056b3;'>"
-                transcript_html += f"<b>Correct Answer:</b> {correct_ans}"
-                transcript_html += "</div>"
+            if topic != "Departmental":
+                if str(awarded) != str(max_marks):
+                    transcript_html += f"<div style='background-color:#f0f7ff; padding:8px; border-left:3px solid #007bff; font-size:13px; color:#0056b3;'>"
+                    transcript_html += f"<b>Correct Answer:</b> {correct_ans}"
+                    transcript_html += "</div>"
 
-            transcript_html += f"""
-            <details style='margin-top:8px; cursor:pointer;'>
-                <summary style='color:#007bff; font-size:12px; font-weight:bold;'>Show AI Grading Logic</summary>
-                <div style='font-size:12px; color:#555; background:#f9f9f9; padding:8px; border-radius:4px; margin-top:5px; border:1px solid #ddd;'>
-                    {grading_reason}
-                </div>
-            </details>
-            """
+                transcript_html += f"""
+                <details style='margin-top:8px; cursor:pointer;'>
+                    <summary style='color:#007bff; font-size:12px; font-weight:bold;'>Show AI Grading Logic</summary>
+                    <div style='font-size:12px; color:#555; background:#f9f9f9; padding:8px; border-radius:4px; margin-top:5px; border:1px solid #ddd;'>
+                        {grading_reason}
+                    </div>
+                </details>
+                """
 
             transcript_html += "</div>"
     else:
