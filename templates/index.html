@@ -687,15 +687,6 @@
             // addWatermark(data.candidate_name, data.candidate_id);
 
             renderQuestions(data.questions, data.saved_answers || {});
-            setInterval(() => {
-                if (testHasStarted && !isSubmitting) {
-                    const activeTextArea = document.querySelector('textarea:focus');
-                    if (activeTextArea) {
-                        // Note: Ensure your renderQuestions function adds id="${q.question_id}" to textareas
-                        saveAnswer(activeTextArea.id, activeTextArea.value);
-                    }
-                }
-            }, 30000);
 
             const deptBtn = document.getElementById('btn-dept');
             const hasDept = data.questions.some(q => q.topic === "Departmental");
@@ -1397,7 +1388,7 @@ function renderQuestions(questions, savedAnswers) {
             </div>`;
         } else {
             const valText = savedVal || '';
-            inputHtml = `<textarea id="${q.question_id}" placeholder="Type your answer here..." 
+            inputHtml = `<textarea placeholder="Type your answer here..." 
                             onblur="saveAnswer('${q.question_id}', this.value)">${savedVal || ''}</textarea>`;
         }
         
@@ -1450,18 +1441,7 @@ function switchSection(sectionType) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: token, question_id: qid.toString(), answer_text: val })
             });
-            if (!response.ok) throw new Error("Network response was not ok");
-            localStorage.removeItem(`offline_${token}_${qid}`);
-            console.log(`Saved Q${qid} successfully.`);
-        } catch(e) {
-        console.error("Save failed, caching locally:", e);
-        // Alert the user via your warning box
-        const warnBox = document.getElementById("warning-box");
-        const warnMsg = document.getElementById("time-val"); // Or use a custom toast
-        
-        // Store locally so it can be recovered if they refresh or reconnect
-        localStorage.setItem(`offline_${token}_${qid}`, val);
-        }
+        } catch(e) {}
     }
 
     function updateProgress() {
