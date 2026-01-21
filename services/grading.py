@@ -25,7 +25,7 @@ def check_match(user_input: str, correct_answer: str) -> bool:
 def calculate_score(session: TestSession, db: Session):
     print(f"\n--- 📝 START GRADING SESSION {session.id} ---")
 
-    user_answers = db.query(Answer).filter(Answer.session_id == session.id).order_by(Answer.id.asc()).all()
+    user_answers = db.query(Answer).filter(Answer.session_id == session.id).all() # query answer table for every rec belonging to that session id
     grading_key = session.grading_cache # correct answers
     
     total_score = 0

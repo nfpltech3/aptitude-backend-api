@@ -1444,27 +1444,16 @@ function switchSection(sectionType) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-let lastSavedValues = {};
-
     async function saveAnswer(qid, val) {
-        const trimmedVal = val.trim();
-        // SKIP if the value hasn't changed since the last successful save
-        if (lastSavedValues[qid] === trimmedVal) return;
-
         updateProgress();
-
         if(isSubmitting) return;
-
         try {
             const response = await fetch('https://aptitude-backend-b6ir.onrender.com/save-answer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: token, question_id: qid.toString(), answer_text: val })
             });
-
             if (!response.ok) throw new Error("Network response was not ok");
-
-            lastSavedValues[qid] = trimmedVal; // Update our tracker
             localStorage.removeItem(`offline_${token}_${qid}`);
             document.getElementById("warning-box").style.display = "none";
             console.log(`Saved Q${qid} successfully.`);
