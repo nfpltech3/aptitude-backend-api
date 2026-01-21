@@ -691,10 +691,11 @@
                 if (testHasStarted && !isSubmitting) {
                     const activeTextArea = document.querySelector('textarea:focus');
                     if (activeTextArea) {
+                        // Note: Ensure your renderQuestions function adds id="${q.question_id}" to textareas
                         saveAnswer(activeTextArea.id, activeTextArea.value);
                     }
                 }
-            }, 15000);
+            }, 30000);
 
             const deptBtn = document.getElementById('btn-dept');
             const hasDept = data.questions.some(q => q.topic === "Departmental");
@@ -1444,21 +1445,19 @@ function switchSection(sectionType) {
         updateProgress();
         if(isSubmitting) return;
         try {
-            const response = await fetch('https://aptitude-backend-b6ir.onrender.com/save-answer', {
+            await fetch('https://aptitude-backend-b6ir.onrender.com/save-answer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: token, question_id: qid.toString(), answer_text: val })
             });
             if (!response.ok) throw new Error("Network response was not ok");
             localStorage.removeItem(`offline_${token}_${qid}`);
-            document.getElementById("warning-box").style.display = "none";
             console.log(`Saved Q${qid} successfully.`);
         } catch(e) {
-        console.warn("Connection lost, saving to local vault:", e);
+        console.error("Save failed, caching locally:", e);
         // Alert the user via your warning box
         const warnBox = document.getElementById("warning-box");
-        warnBox.innerHTML = "⚠️ <b>Connection Unstable:</b> Answers are being saved locally on your device.";
-        warnBox.style.display = "block";
+        const warnMsg = document.getElementById("time-val"); // Or use a custom toast
         
         // Store locally so it can be recovered if they refresh or reconnect
         localStorage.setItem(`offline_${token}_${qid}`, val);
@@ -1541,27 +1540,6 @@ function switchSection(sectionType) {
                 container.style.paddingBottom = '80px';
             }, 200);
         }
-    });
-
-    window.addEventListener('online', async () => {
-        console.log("Internet restored! Syncing offline answers...");
-        
-        // 1. Find all items in localStorage that start with 'offline_'
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith(`offline_${token}_`)) {
-                const qid = key.split('_').pop();
-                const val = localStorage.getItem(key);
-                
-                // 2. Silently push them to the backend
-                await saveAnswer(qid, val);
-                
-                // 3. The saveAnswer function will remove the item if successful
-            }
-        }
-        
-        // 4. Update UI to show they are back online
-        document.getElementById("warning-box").style.display = "none";
     });
 
 </script>
