@@ -1439,7 +1439,12 @@ function switchSection(sectionType) {
             await fetch('https://aptitude-backend-b6ir.onrender.com/save-answer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: token, question_id: qid.toString(), answer_text: val })
+                body: JSON.stringify({ 
+                    token: token, 
+                    question_id: qid.toString(), 
+                    answer_text: val,
+                    client_timestamp: Date.now()  // Timestamp when user clicked
+                })
             });
         } catch(e) {}
     }

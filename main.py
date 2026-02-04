@@ -409,6 +409,7 @@ async def serve_test_page(request: Request, token: str, db: Session = Depends(ge
 @app.post("/save-answer")
 def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
     from sqlalchemy.exc import IntegrityError
+    from datetime import datetime
     
     # 1. Validate Session & Time
     session = crud.get_session_by_token(db, data.token)
@@ -422,17 +423,31 @@ def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Test already submitted")
 
     safe_qid = data.question_id
+    
+    # Convert client timestamp (ms) to datetime, or use current time
+    if data.client_timestamp:
+        # Client sends timestamp in milliseconds
+        request_time = datetime.fromtimestamp(data.client_timestamp / 1000)
+    else:
+        request_time = get_ist_time()
 
-    # 2. Check if answer already exists (Upsert with race condition handling)
+    # 2. Check if answer already exists
     existing_answer = db.query(models.Answer).filter(
         models.Answer.session_id == session.id,
         models.Answer.question_id == safe_qid
     ).first()
 
     if existing_answer:
-        # Update existing
+        # Only update if this request is NEWER than the saved answer
+        if existing_answer.saved_at and data.client_timestamp:
+            if request_time <= existing_answer.saved_at:
+                # This request is older than what's already saved - skip it
+                print(f"⏭️ Skipping stale answer for session={session.id}, question={safe_qid} (saved: {existing_answer.saved_at}, incoming: {request_time})")
+                return {"status": "skipped", "reason": "stale_request"}
+        
+        # Update with newer answer
         existing_answer.answer_text = data.answer_text
-        existing_answer.saved_at = get_ist_time()
+        existing_answer.saved_at = request_time
         db.commit()
     else:
         # Try to insert new - handle race condition
@@ -440,25 +455,34 @@ def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
             new_answer = models.Answer(
                 session_id=session.id,
                 question_id=safe_qid,
-                answer_text=data.answer_text
+                answer_text=data.answer_text,
+                saved_at=request_time
             )
             db.add(new_answer)
             db.commit()
         except IntegrityError:
             # Race condition: another request inserted first
-            # Rollback and update instead
-            print(f"⚡ Race condition caught for session={session.id}, question={safe_qid} - retrying as UPDATE")
             db.rollback()
+            print(f"⚡ Race condition caught for session={session.id}, question={safe_qid} - retrying as UPDATE")
+            
             existing_answer = db.query(models.Answer).filter(
                 models.Answer.session_id == session.id,
                 models.Answer.question_id == safe_qid
             ).first()
+            
             if existing_answer:
+                # Only update if this request is newer
+                if existing_answer.saved_at and data.client_timestamp:
+                    if request_time <= existing_answer.saved_at:
+                        print(f"⏭️ Skipping stale answer after race for session={session.id}, question={safe_qid}")
+                        return {"status": "skipped", "reason": "stale_request"}
+                
                 existing_answer.answer_text = data.answer_text
-                existing_answer.saved_at = get_ist_time()
+                existing_answer.saved_at = request_time
                 db.commit()
     
     return {"status": "saved"}
+
 
 @app.post("/submit-test")
 def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):

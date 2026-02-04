@@ -9,6 +9,7 @@ class SaveAnswerRequest(BaseModel):
     token: str
     question_id: str
     answer_text: str
+    client_timestamp: Optional[float] = None  # Unix timestamp (ms) when user clicked
 
     @field_validator('question_id') 
     @classmethod
