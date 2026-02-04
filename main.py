@@ -23,6 +23,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 
+from sqlalchemy.dialects.postgresql import insert
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
 load_dotenv(ENV_PATH)
@@ -406,6 +408,8 @@ async def serve_test_page(request: Request, token: str, db: Session = Depends(ge
 
 @app.post("/save-answer")
 def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
+    from sqlalchemy.exc import IntegrityError
+    
     # 1. Validate Session & Time
     session = crud.get_session_by_token(db, data.token)
     if not session:
@@ -419,7 +423,7 @@ def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
 
     safe_qid = data.question_id
 
-    # 2. Check if answer already exists (Upsert)
+    # 2. Check if answer already exists (Upsert with race condition handling)
     existing_answer = db.query(models.Answer).filter(
         models.Answer.session_id == session.id,
         models.Answer.question_id == safe_qid
@@ -428,18 +432,32 @@ def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
     if existing_answer:
         # Update existing
         existing_answer.answer_text = data.answer_text
-        # Optional: Update 'saved_at' timestamp if you have that column
         existing_answer.saved_at = get_ist_time()
+        db.commit()
     else:
-        # Insert new
-        new_answer = models.Answer(
-            session_id=session.id,
-            question_id=safe_qid,
-            answer_text=data.answer_text
-        )
-        db.add(new_answer)
+        # Try to insert new - handle race condition
+        try:
+            new_answer = models.Answer(
+                session_id=session.id,
+                question_id=safe_qid,
+                answer_text=data.answer_text
+            )
+            db.add(new_answer)
+            db.commit()
+        except IntegrityError:
+            # Race condition: another request inserted first
+            # Rollback and update instead
+            print(f"⚡ Race condition caught for session={session.id}, question={safe_qid} - retrying as UPDATE")
+            db.rollback()
+            existing_answer = db.query(models.Answer).filter(
+                models.Answer.session_id == session.id,
+                models.Answer.question_id == safe_qid
+            ).first()
+            if existing_answer:
+                existing_answer.answer_text = data.answer_text
+                existing_answer.saved_at = get_ist_time()
+                db.commit()
     
-    db.commit()
     return {"status": "saved"}
 
 @app.post("/submit-test")
