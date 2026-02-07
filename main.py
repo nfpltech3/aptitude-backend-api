@@ -442,7 +442,6 @@ def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
         if existing_answer.saved_at and data.client_timestamp:
             if request_time <= existing_answer.saved_at:
                 # This request is older than what's already saved - skip it
-                print(f"⏭️ Skipping stale answer for session={session.id}, question={safe_qid} (saved: {existing_answer.saved_at}, incoming: {request_time})")
                 return {"status": "skipped", "reason": "stale_request"}
         
         # Update with newer answer
@@ -463,7 +462,6 @@ def save_answer(data: SaveAnswerRequest, db: Session = Depends(get_db)):
         except IntegrityError:
             # Race condition: another request inserted first
             db.rollback()
-            print(f"⚡ Race condition caught for session={session.id}, question={safe_qid} - retrying as UPDATE")
             
             existing_answer = db.query(models.Answer).filter(
                 models.Answer.session_id == session.id,

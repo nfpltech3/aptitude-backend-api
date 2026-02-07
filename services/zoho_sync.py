@@ -61,76 +61,62 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
                 calculated_total += awarded_val
                 filtered_max_marks += max_q
     
-    # --- 2. PREPARE TRANSCRIPT HTML ---
+    # --- 2. PREPARE TRANSCRIPT HTML (Compact Version for Zoho Limit) ---
     transcript_priority = {"Departmental": 0, "Numerical": 1, "Verbal": 2}
-    transcript_html = "<h3 style='color: #333; border-bottom: 1px solid #ccc; padding-bottom: 10px;'>Assessment Performance Summary</h3>"
+    transcript_html = "<h3>Assessment Performance Summary</h3>"
     current_topic = None
     
     if answers_list:
         answers_list.sort(key=lambda x: transcript_priority.get(x.get('topic', 'General'), 99))
         for i, ans in enumerate(answers_list, 1):
             topic = ans.get('topic', 'General')
-            
-            # Identify current sectional score from our dynamic dictionary
             sec_score = sectional_data.get(topic, {"awarded": 0, "max": 0})
             
-            # --- Section Header ---
+            # Section Header (only when topic changes)
             if topic != current_topic:
                 current_topic = topic
-                transcript_html += f"""
-                <div style='margin-top:25px; margin-bottom:15px; border-bottom:2px solid #007bff; padding-bottom:5px; display:flex; justify-content:space-between; align-items:center;'>
-                    <h4 style='color:#007bff; margin:0;'>{current_topic} Section</h4>
-                    <span style='background:#007bff; color:white; padding:2px 10px; border-radius:15px; font-size:13px; font-weight:bold;'>
-                        Section Score: {sec_score['awarded']} / {sec_score['max']}
-                    </span>
-                </div>
-                """
+                transcript_html += f"<div style='margin:15px 0;border-bottom:2px solid #007bff;padding:5px 0;'>"
+                transcript_html += f"<b style='color:#007bff;'>{current_topic} Section</b> "
+                transcript_html += f"<span style='background:#007bff;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;'>"
+                transcript_html += f"{sec_score['awarded']}/{sec_score['max']}</span></div>"
             
-            q_text = ans.get('question_text', 'Question ID: ' + str(ans['question_id']))
-            ans_text = ans.get('answer_text', '')
-            correct_ans = ans.get('correct_answer', 'N/A')
+            q_text = ans.get('question_text', f'Q-{ans["question_id"]}')  # Full question text, no truncation
+            ans_text = ans.get('answer_text', '-')  # Full answer text
+            correct_ans = ans.get('correct_answer', '')  # Full correct answer
             q_type = ans.get('question_type', 'MCQ')
             awarded = ans.get('marks_awarded', 0)
             max_marks = ans.get('max_marks', 1)
-            grading_reason = ans.get('grading_reason', 'No AI analysis available for this answer.')
-
-            if awarded == "Manual":
-                score_display = "<span style='color:orange; font-weight:bold;'>Pending Review</span>"
-                bg_color = "#fffbf0" 
-            else:
-                score_display = f"<b>{awarded} / {max_marks}</b>"
-                bg_color = "#e6fffa" if str(awarded) == str(max_marks) else "#fff5f5"
-
-            # --- C. BUILD QUESTION CARD ---
-            transcript_html += f"<div style='margin-bottom:15px; border:1px solid #eee; padding:10px; border-radius:5px;'>"
             
-            transcript_html += f"<div style='display:flex; justify-content:space-between; margin-bottom:5px;'>"
-            transcript_html += f"   <span style='font-weight:bold; color:#555;'>Q{i}: {q_type}</span>"
-            transcript_html += f"   <span style='background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;'>Marks: {score_display}</span>"
-            transcript_html += f"</div>"
-            transcript_html += f"<div style='margin-bottom:8px; color:#222; font-size:14px;'>{q_text}</div>"
-            transcript_html += f"<div style='background-color:{bg_color}; padding:8px; border-left:3px solid #ccc; font-size:13px;'>"
-            transcript_html += f"<b>Candidate Answer:</b> {ans_text}"
-            transcript_html += "</div>"
-
-            if topic != "Departmental":
-                if str(awarded) != str(max_marks):
-                    transcript_html += f"<div style='background-color:#f0f7ff; padding:8px; border-left:3px solid #007bff; font-size:13px; color:#0056b3;'>"
-                    transcript_html += f"<b>Correct Answer:</b> {correct_ans}"
-                    transcript_html += "</div>"
-
-                transcript_html += f"""
-                <details style='margin-top:8px; cursor:pointer;'>
-                    <summary style='color:#007bff; font-size:12px; font-weight:bold;'>Show AI Grading Logic</summary>
-                    <div style='font-size:12px; color:#555; background:#f9f9f9; padding:8px; border-radius:4px; margin-top:5px; border:1px solid #ddd;'>
-                        {grading_reason}
-                    </div>
-                </details>
-                """
-
+            # Determine styling
+            if awarded == "Manual":
+                mark_style = "color:orange;"
+                mark_text = "Pending"
+            elif str(awarded) == str(max_marks):
+                mark_style = "color:green;"
+                mark_text = f"{awarded}/{max_marks}"
+            else:
+                mark_style = "color:red;"
+                mark_text = f"{awarded}/{max_marks}"
+            
+            # Compact Question Card
+            transcript_html += f"<div style='margin:8px 0;padding:8px;border:1px solid #ddd;border-radius:4px;'>"
+            transcript_html += f"<b>Q{i}</b> [{q_type}] <span style='{mark_style}font-weight:bold;'>{mark_text}</span><br>"
+            transcript_html += f"<span style='color:#333;'>{q_text}</span><br>"
+            transcript_html += f"<span style='color:#666;'>Ans: {ans_text}</span>"
+            
+            # Show correct answer only if wrong (non-departmental)
+            if topic != "Departmental" and str(awarded) != str(max_marks) and awarded != "Manual":
+                transcript_html += f"<br><span style='color:#007bff;'>Correct: {correct_ans}</span>"
+            
             transcript_html += "</div>"
     else:
         transcript_html += "<p>No answers recorded.</p>"
+    
+    # Safety check: Zoho has ~32000 char limit, truncate if needed
+    ZOHO_CHAR_LIMIT = 31000
+    if len(transcript_html) > ZOHO_CHAR_LIMIT:
+        transcript_html = transcript_html[:ZOHO_CHAR_LIMIT] + "...<p><b>⚠️ Transcript truncated due to length.</b></p>"
+        print(f"⚠️ Transcript exceeded {ZOHO_CHAR_LIMIT} chars, truncated.")
 
     # --- 2. SEND TO ZOHO ---
     url = f"{BASE_URL}/report/All_Candidate_Assessments/{zoho_id}"
