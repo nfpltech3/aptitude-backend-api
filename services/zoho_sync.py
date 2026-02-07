@@ -87,26 +87,32 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             awarded = ans.get('marks_awarded', 0)
             max_marks = ans.get('max_marks', 1)
             
-            # Determine styling
+            # Determine styling based on score
             if awarded == "Manual":
-                mark_style = "color:orange;"
-                mark_text = "Pending"
+                score_display = "<span style='color:orange;font-weight:bold;'>Pending Review</span>"
+                bg_color = "#fffbf0"
             elif str(awarded) == str(max_marks):
-                mark_style = "color:green;"
-                mark_text = f"{awarded}/{max_marks}"
+                score_display = f"<b>{awarded}/{max_marks}</b>"
+                bg_color = "#e6fffa"  # Light green for correct
             else:
-                mark_style = "color:red;"
-                mark_text = f"{awarded}/{max_marks}"
+                score_display = f"<b>{awarded}/{max_marks}</b>"
+                bg_color = "#fff5f5"  # Light red for wrong
             
-            # Compact Question Card
-            transcript_html += f"<div style='margin:8px 0;padding:8px;border:1px solid #ddd;border-radius:4px;'>"
-            transcript_html += f"<b>Q{i}</b> [{q_type}] <span style='{mark_style}font-weight:bold;'>{mark_text}</span><br>"
-            transcript_html += f"<span style='color:#333;'>{q_text}</span><br>"
-            transcript_html += f"<span style='color:#666;'>Ans: {ans_text}</span>"
+            # Question Card
+            transcript_html += f"<div style='margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:5px;'>"
+            transcript_html += f"<div style='margin-bottom:5px;'><b>Q{i}:</b> {q_type} | Marks: {score_display}</div>"
+            transcript_html += f"<div style='margin-bottom:8px;color:#222;'>{q_text}</div>"
             
-            # Show correct answer only if wrong (non-departmental)
+            # Candidate Answer Box (styled)
+            transcript_html += f"<div style='background:{bg_color};padding:8px;border-left:3px solid #ccc;margin-bottom:5px;'>"
+            transcript_html += f"<b>Candidate Answer:</b> {ans_text}"
+            transcript_html += "</div>"
+            
+            # Correct Answer Box (only if wrong, non-departmental)
             if topic != "Departmental" and str(awarded) != str(max_marks) and awarded != "Manual":
-                transcript_html += f"<br><span style='color:#007bff;'>Correct: {correct_ans}</span>"
+                transcript_html += f"<div style='background:#f0f7ff;padding:8px;border-left:3px solid #007bff;color:#0056b3;'>"
+                transcript_html += f"<b>Correct Answer:</b> {correct_ans}"
+                transcript_html += "</div>"
             
             transcript_html += "</div>"
     else:
