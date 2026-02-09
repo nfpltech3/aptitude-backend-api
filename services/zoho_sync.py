@@ -72,47 +72,45 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             topic = ans.get('topic', 'General')
             sec_score = sectional_data.get(topic, {"awarded": 0, "max": 0})
             
-            # Section Header (only when topic changes)
+            # Section Header (only when topic changes) - Compact
             if topic != current_topic:
                 current_topic = topic
-                transcript_html += f"<div style='margin:15px 0;border-bottom:2px solid #007bff;padding:5px 0;'>"
-                transcript_html += f"<b style='color:#007bff;'>{current_topic} Section</b> "
-                transcript_html += f"<span style='background:#007bff;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;'>"
+                transcript_html += f"<div style='margin:10px 0;border-bottom:2px solid #007bff;padding:3px;'>"
+                transcript_html += f"<b style='color:#007bff'>{current_topic}</b> "
+                transcript_html += f"<span style='background:#007bff;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px'>"
                 transcript_html += f"{sec_score['awarded']}/{sec_score['max']}</span></div>"
             
-            q_text = ans.get('question_text', f'Q-{ans["question_id"]}')  # Full question text, no truncation
-            ans_text = ans.get('answer_text', '-')  # Full answer text
-            correct_ans = ans.get('correct_answer', '')  # Full correct answer
-            q_type = ans.get('question_type', 'MCQ')
+            q_text = ans.get('question_text', f'Q-{ans["question_id"]}')
+            ans_text = ans.get('answer_text', '-')
+            correct_ans = ans.get('correct_answer', '')
+            q_type = "MCQ" if ans.get('question_type') == "MCQ" else "Desc"  # Shorter type labels
             awarded = ans.get('marks_awarded', 0)
             max_marks = ans.get('max_marks', 1)
             
-            # Determine styling based on score
+            # Determine background color
             if awarded == "Manual":
-                score_display = "<span style='color:orange;font-weight:bold;'>Pending Review</span>"
-                bg_color = "#fffbf0"
+                bg = "#fffbf0"
+                mark = "<b style='color:orange'>Pending</b>"
             elif str(awarded) == str(max_marks):
-                score_display = f"<b>{awarded}/{max_marks}</b>"
-                bg_color = "#e6fffa"  # Light green for correct
+                bg = "#e6fffa"
+                mark = f"<b style='color:green'>{awarded}/{max_marks}</b>"
             else:
-                score_display = f"<b>{awarded}/{max_marks}</b>"
-                bg_color = "#fff5f5"  # Light red for wrong
+                bg = "#fff5f5"
+                mark = f"<b style='color:red'>{awarded}/{max_marks}</b>"
             
-            # Question Card
-            transcript_html += f"<div style='margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:5px;'>"
-            transcript_html += f"<div style='margin-bottom:5px;'><b>Q{i}:</b> {q_type} | Marks: {score_display}</div>"
-            transcript_html += f"<div style='margin-bottom:8px;color:#222;'>{q_text}</div>"
+            # Compact Question Card
+            transcript_html += f"<div style='margin:6px 0;padding:6px;border:1px solid #ddd'>"
+            transcript_html += f"<b>Q{i}</b> [{q_type}] {mark}<br>"
+            transcript_html += f"{q_text}<br>"
             
-            # Candidate Answer Box (styled)
-            transcript_html += f"<div style='background:{bg_color};padding:8px;border-left:3px solid #ccc;margin-bottom:5px;'>"
-            transcript_html += f"<b>Candidate Answer:</b> {ans_text}"
-            transcript_html += "</div>"
+            # Candidate Answer Box (styled - compact)
+            transcript_html += f"<div style='background:{bg};padding:4px;border-left:2px solid #999;margin:4px 0'>"
+            transcript_html += f"<b>Ans:</b> {ans_text}</div>"
             
-            # Correct Answer Box (only if wrong, non-departmental)
+            # Correct Answer Box (only if wrong, non-departmental) - compact
             if topic != "Departmental" and str(awarded) != str(max_marks) and awarded != "Manual":
-                transcript_html += f"<div style='background:#f0f7ff;padding:8px;border-left:3px solid #007bff;color:#0056b3;'>"
-                transcript_html += f"<b>Correct Answer:</b> {correct_ans}"
-                transcript_html += "</div>"
+                transcript_html += f"<div style='background:#f0f7ff;padding:4px;border-left:2px solid #007bff;color:#0056b3'>"
+                transcript_html += f"<b>Correct:</b> {correct_ans}</div>"
             
             transcript_html += "</div>"
     else:
@@ -120,9 +118,11 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     
     # Safety check: Zoho has ~32000 char limit, truncate if needed
     ZOHO_CHAR_LIMIT = 31000
+    print(f"📊 Transcript length: {len(transcript_html)} chars (limit: {ZOHO_CHAR_LIMIT})")
+    
     if len(transcript_html) > ZOHO_CHAR_LIMIT:
-        transcript_html = transcript_html[:ZOHO_CHAR_LIMIT] + "...<p><b>⚠️ Transcript truncated due to length.</b></p>"
-        print(f"⚠️ Transcript exceeded {ZOHO_CHAR_LIMIT} chars, truncated.")
+        transcript_html = transcript_html[:ZOHO_CHAR_LIMIT] + "...</div><p><b>⚠️ Transcript truncated due to length.</b></p>"
+        print(f"⚠️ Transcript exceeded limit! Truncated to {ZOHO_CHAR_LIMIT} chars.")
 
     # --- 2. SEND TO ZOHO ---
     url = f"{BASE_URL}/report/All_Candidate_Assessments/{zoho_id}"
