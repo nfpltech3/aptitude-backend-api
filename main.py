@@ -532,7 +532,7 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
 
 def perform_zoho_sync(candidate_id, score, status, start_time, end_time, has_dept_test, total_possible, violations, answers, session_id):
     db = SessionLocal()
-    print(f"🔁 Starting Zoho sync for session {session_id}")
+    print(f"🔁 Starting Zoho sync for session {session_id}", flush=True)
     try:
         success = update_candidate_summary(
             zoho_id=candidate_id, 
@@ -545,21 +545,21 @@ def perform_zoho_sync(candidate_id, score, status, start_time, end_time, has_dep
             violations=violations,
             answers_list=answers
         )
-        print(f"✅ Zoho update response: {success}")
+        print(f"✅ Zoho update response: {success}", flush=True)
         
         if success:
             session_rec = db.query(models.TestSession).filter(models.TestSession.id == session_id).first()
             if session_rec:
                 session_rec.is_synced = True
                 db.commit()
-                print(f"✅ Successfully marked {candidate_id} as Synced in Neon.")
+                print(f"✅ Successfully marked {candidate_id} as Synced in Neon.", flush=True)
         
         # # B. Push Answers -> Disabled to save api calls
         # if answers:
         #     push_candidate_answers(candidate_id, answers)
         
     except Exception as e:
-        print(f"❌ Zoho sync failed for session {session_id}: {e}")
+        print(f"❌ Zoho sync failed for session {session_id}: {e}", flush=True)
     
     finally:
         db.close()

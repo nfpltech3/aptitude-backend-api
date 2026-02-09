@@ -108,11 +108,11 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     
     # Safety check: Zoho has ~32000 char limit, truncate if needed
     ZOHO_CHAR_LIMIT = 31000
-    print(f"📊 Transcript length: {len(transcript_html)} chars (limit: {ZOHO_CHAR_LIMIT})")
+    print(f"📊 Transcript length: {len(transcript_html)} chars (limit: {ZOHO_CHAR_LIMIT})", flush=True)
     
     if len(transcript_html) > ZOHO_CHAR_LIMIT:
         transcript_html = transcript_html[:ZOHO_CHAR_LIMIT] + "...</div><p><b>⚠️ Transcript truncated due to length.</b></p>"
-        print(f"⚠️ Transcript exceeded limit! Truncated to {ZOHO_CHAR_LIMIT} chars.")
+        print(f"⚠️ Transcript exceeded limit! Truncated to {ZOHO_CHAR_LIMIT} chars.", flush=True)
 
     # --- 2. SEND TO ZOHO ---
     url = f"{BASE_URL}/report/All_Candidate_Assessments/{zoho_id}"
