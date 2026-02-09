@@ -106,8 +106,8 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     else:
         transcript_html += "<p>No answers recorded.</p>"
     
-    # Safety check: Zoho has ~32000 char limit, truncate if needed
-    ZOHO_CHAR_LIMIT = 31000
+    # Safety check: Zoho Rich Text has 32000 char limit
+    ZOHO_CHAR_LIMIT = 32000
     print(f"📊 Transcript length: {len(transcript_html)} chars (limit: {ZOHO_CHAR_LIMIT})", flush=True)
     
     if len(transcript_html) > ZOHO_CHAR_LIMIT:
