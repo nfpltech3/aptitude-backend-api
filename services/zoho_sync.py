@@ -72,10 +72,11 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             topic = ans.get('topic', 'General')
             sec_score = sectional_data.get(topic, {"awarded": 0, "max": 0})
             
-            # Section Header - Ultra compact
+            # Section Header
             if topic != current_topic:
                 current_topic = topic
-                transcript_html += f"<p><b style='color:#007bff'>{current_topic} ({sec_score['awarded']}/{sec_score['max']})</b></p>"
+                transcript_html += f"<div style='margin:10px 0;border-bottom:2px solid #007bff;padding:3px'>"
+                transcript_html += f"<b style='color:#007bff'>{current_topic}</b> ({sec_score['awarded']}/{sec_score['max']})</div>"
             
             q_text = ans.get('question_text', f'Q-{ans["question_id"]}')
             ans_text = ans.get('answer_text', '-')
@@ -86,24 +87,22 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             # Color for marks
             if awarded == "Manual":
                 color = "orange"
-                mark = "?"
             elif str(awarded) == str(max_marks):
                 color = "green"
-                mark = "✓"
             else:
                 color = "red"
-                mark = "✗"
             
-            # Ultra-compact question format
-            transcript_html += f"<p><b>Q{i}</b> <span style='color:{color}'>[{mark} {awarded}/{max_marks}]</span><br>"
+            # Question Card with border
+            transcript_html += f"<div style='margin:5px 0;padding:8px;border:1px solid #ddd'>"
+            transcript_html += f"<b>Q{i}</b> <span style='color:{color}'>[{awarded}/{max_marks}]</span><br>"
             transcript_html += f"{q_text}<br>"
-            transcript_html += f"<b>A:</b> {ans_text}"
+            transcript_html += f"<b>Ans:</b> {ans_text}"
             
             # Correct answer only if wrong (non-departmental)
             if topic != "Departmental" and str(awarded) != str(max_marks) and awarded != "Manual":
-                transcript_html += f"<br><span style='color:#007bff'><b>✓:</b> {correct_ans}</span>"
+                transcript_html += f"<br><span style='color:#007bff'><b>Correct:</b> {correct_ans}</span>"
             
-            transcript_html += "</p>"
+            transcript_html += "</div>"
     else:
         transcript_html += "<p>No answers recorded.</p>"
     
