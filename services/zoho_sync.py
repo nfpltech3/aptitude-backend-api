@@ -72,47 +72,38 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             topic = ans.get('topic', 'General')
             sec_score = sectional_data.get(topic, {"awarded": 0, "max": 0})
             
-            # Section Header (only when topic changes) - Compact
+            # Section Header - Ultra compact
             if topic != current_topic:
                 current_topic = topic
-                transcript_html += f"<div style='margin:10px 0;border-bottom:2px solid #007bff;padding:3px;'>"
-                transcript_html += f"<b style='color:#007bff'>{current_topic}</b> "
-                transcript_html += f"<span style='background:#007bff;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px'>"
-                transcript_html += f"{sec_score['awarded']}/{sec_score['max']}</span></div>"
+                transcript_html += f"<p><b style='color:#007bff'>{current_topic} ({sec_score['awarded']}/{sec_score['max']})</b></p>"
             
             q_text = ans.get('question_text', f'Q-{ans["question_id"]}')
             ans_text = ans.get('answer_text', '-')
             correct_ans = ans.get('correct_answer', '')
-            q_type = "MCQ" if ans.get('question_type') == "MCQ" else "Desc"  # Shorter type labels
             awarded = ans.get('marks_awarded', 0)
             max_marks = ans.get('max_marks', 1)
             
-            # Determine background color
+            # Color for marks
             if awarded == "Manual":
-                bg = "#fffbf0"
-                mark = "<b style='color:orange'>Pending</b>"
+                color = "orange"
+                mark = "?"
             elif str(awarded) == str(max_marks):
-                bg = "#e6fffa"
-                mark = f"<b style='color:green'>{awarded}/{max_marks}</b>"
+                color = "green"
+                mark = "✓"
             else:
-                bg = "#fff5f5"
-                mark = f"<b style='color:red'>{awarded}/{max_marks}</b>"
+                color = "red"
+                mark = "✗"
             
-            # Compact Question Card
-            transcript_html += f"<div style='margin:6px 0;padding:6px;border:1px solid #ddd'>"
-            transcript_html += f"<b>Q{i}</b> [{q_type}] {mark}<br>"
+            # Ultra-compact question format
+            transcript_html += f"<p><b>Q{i}</b> <span style='color:{color}'>[{mark} {awarded}/{max_marks}]</span><br>"
             transcript_html += f"{q_text}<br>"
+            transcript_html += f"<b>A:</b> {ans_text}"
             
-            # Candidate Answer Box (styled - compact)
-            transcript_html += f"<div style='background:{bg};padding:4px;border-left:2px solid #999;margin:4px 0'>"
-            transcript_html += f"<b>Ans:</b> {ans_text}</div>"
-            
-            # Correct Answer Box (only if wrong, non-departmental) - compact
+            # Correct answer only if wrong (non-departmental)
             if topic != "Departmental" and str(awarded) != str(max_marks) and awarded != "Manual":
-                transcript_html += f"<div style='background:#f0f7ff;padding:4px;border-left:2px solid #007bff;color:#0056b3'>"
-                transcript_html += f"<b>Correct:</b> {correct_ans}</div>"
+                transcript_html += f"<br><span style='color:#007bff'><b>✓:</b> {correct_ans}</span>"
             
-            transcript_html += "</div>"
+            transcript_html += "</p>"
     else:
         transcript_html += "<p>No answers recorded.</p>"
     
