@@ -56,10 +56,9 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             
             sectional_data[topic]["awarded"] += awarded_val
             sectional_data[topic]["max"] += max_q
-
-            if topic != "Departmental":
-                calculated_total += awarded_val
-                filtered_max_marks += max_q
+            
+            calculated_total += awarded_val
+            filtered_max_marks += max_q
     
     # --- 2. PREPARE TRANSCRIPT HTML (Compact Version for Zoho Limit) ---
     transcript_priority = {"Departmental": 0, "Numerical": 1, "Verbal": 2}
@@ -97,9 +96,8 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
             transcript_html += f"<b>Q{i}</b> <span style='color:{color}'>[{awarded}/{max_marks}]</span><br>"
             transcript_html += f"{q_text}<br>"
             transcript_html += f"<b>Ans:</b> {ans_text}"
-            
-            # Correct answer only if wrong (non-departmental)
-            if topic != "Departmental" and str(awarded) != str(max_marks) and awarded != "Manual":
+            # Show correct answer if wrong
+            if str(awarded) != str(max_marks) and awarded != "Manual":
                 transcript_html += f"<br><span style='color:#007bff'><b>Correct:</b> {correct_ans}</span>"
             
             transcript_html += "</div>"
@@ -131,10 +129,7 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     }
     
     # Map the dictionary values back to Zoho fields
-    # Note: Ensure your Zoho field names stay consistent (e.g., 'Numerical_Score')
     for topic, scores in sectional_data.items():
-        if topic == "Departmental":
-            continue
         field_name = f"{topic.replace(' ', '_')}_Score"
         payload_data[field_name] = f"{scores['awarded']} / {scores['max']}"
     
