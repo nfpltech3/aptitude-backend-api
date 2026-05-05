@@ -125,3 +125,63 @@ def calculate_score(session: TestSession, db: Session):
     db.commit() 
     print(f"--- 🏆 AUTOMATED SCORE: {total_score} ---\n")
     return total_score, enriched_answers, total_possible
+
+
+def generate_transcript_html(answers_list):
+    if not answers_list:
+        return "<p>No answers recorded.</p>"
+
+    # Sectional aggregation
+    sectional_data = {}
+    for ans in answers_list:
+        topic = ans.get('topic', 'General')
+        max_q = int(ans.get('max_marks', 0))
+        raw_awarded = ans.get('marks_awarded', 0)
+        is_manual = (raw_awarded == "Manual")
+        awarded_val = int(raw_awarded) if str(raw_awarded).isdigit() else 0
+
+        if topic not in sectional_data:
+            sectional_data[topic] = {"auto_awarded": 0, "auto_max": 0, "manual_max": 0}
+
+        if is_manual:
+            sectional_data[topic]["manual_max"] += max_q
+        else:
+            sectional_data[topic]["auto_awarded"] += awarded_val
+            sectional_data[topic]["auto_max"] += max_q
+
+    # Build HTML
+    transcript_priority = {"Departmental": 0, "Numerical": 1, "Verbal": 2}
+    transcript_html = "<h3>Assessment Performance Summary</h3>"
+    current_topic = None
+
+    answers_list.sort(key=lambda x: transcript_priority.get(x.get('topic', 'General'), 99))
+
+    for i, ans in enumerate(answers_list, 1):
+        topic = ans.get('topic', 'General')
+        sec_score = sectional_data.get(topic)
+
+        if topic != current_topic:
+            current_topic = topic
+            if sec_score["manual_max"] > 0:
+                score_display = f"{sec_score['auto_awarded']}/{sec_score['auto_max']} (Auto) | {sec_score['manual_max']} pending"
+            else:
+                score_display = f"{sec_score['auto_awarded']}/{sec_score['auto_max']}"
+            transcript_html += f"<div style='margin:10px 0;border-bottom:2px solid #007bff;padding:3px'>"
+            transcript_html += f"<b style='color:#007bff'>{current_topic}</b> ({score_display})</div>"
+
+        q_text = ans.get('question_text', f'Q-{ans["question_id"]}')
+        ans_text = ans.get('answer_text', '-')
+        correct_ans = ans.get('correct_answer', '')
+        awarded = ans.get('marks_awarded', 0)
+        max_marks = ans.get('max_marks', 1)
+
+        color = "orange" if awarded == "Manual" else ("green" if str(awarded) == str(max_marks) else "red")
+
+        transcript_html += f"<div style='margin:5px 0;padding:8px;border:1px solid #ddd'>"
+        transcript_html += f"<b>Q{i}</b> <span style='color:{color}'>[{awarded}/{max_marks}]</span><br>"
+        transcript_html += f"{q_text}<br><b>Ans:</b> {ans_text}"
+        if str(awarded) != str(max_marks) and awarded != "Manual":
+            transcript_html += f"<br><span style='color:#007bff'><b>Correct:</b> {correct_ans}</span>"
+        transcript_html += "</div>"
+
+    return transcript_html

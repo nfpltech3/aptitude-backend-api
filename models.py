@@ -29,6 +29,7 @@ class TestSession(Base):
     
     question_cache = Column(JSON, nullable=True)
     grading_cache = Column(JSON, nullable=True)
+    transcript_html = Column(Text, nullable=True)
 
     answers = relationship("Answer", backref="session", cascade="all, delete-orphan")
 

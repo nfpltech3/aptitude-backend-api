@@ -21,7 +21,7 @@ def get_headers():
         "Content-Type": "application/json"
     }
 
-def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_end_time, has_dept_test, total_possible_marks, violations, answers_list=None):
+def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_end_time, has_dept_test, total_possible_marks, violations, answers_list=None, transcript_html=""):
     """
     Updates Zoho with Score, Status, and a Topic-Wise HTML Transcript.
     """
@@ -39,86 +39,47 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     # --- 1. DYNAMIC SECTIONAL AGGREGATION ---
     # This dictionary will store: {"Topic Name": {"awarded": X, "max": Y}}
     sectional_data = {}
-    calculated_total = 0
-    filtered_max_marks = 0
+    calculated_total_auto = 0
+    filtered_max_marks_auto = 0
 
     if answers_list:
         for ans in answers_list:
             topic = ans.get('topic', 'General')
             max_q = int(ans.get('max_marks', 0))
             
-            # Logic: If 'Manual', awarded points for calculation is 0
             raw_awarded = ans.get('marks_awarded', 0)
+            is_manual = (raw_awarded == "Manual")
             awarded_val = int(raw_awarded) if str(raw_awarded).isdigit() else 0
 
             if topic not in sectional_data:
-                sectional_data[topic] = {"awarded": 0, "max": 0}
+                sectional_data[topic] = {"auto_awarded": 0, "auto_max": 0, "manual_max": 0}
             
-            sectional_data[topic]["awarded"] += awarded_val
-            sectional_data[topic]["max"] += max_q
-            
-            calculated_total += awarded_val
-            filtered_max_marks += max_q
+            if is_manual:
+                sectional_data[topic]["manual_max"] += max_q
+            else:
+                sectional_data[topic]["auto_awarded"] += awarded_val
+                sectional_data[topic]["auto_max"] += max_q
+                
+                calculated_total_auto += awarded_val
+                filtered_max_marks_auto += max_q
     
     # --- 2. PREPARE TRANSCRIPT HTML (Compact Version for Zoho Limit) ---
-    transcript_priority = {"Departmental": 0, "Numerical": 1, "Verbal": 2}
-    transcript_html = "<h3>Assessment Performance Summary</h3>"
-    current_topic = None
-    
-    if answers_list:
-        answers_list.sort(key=lambda x: transcript_priority.get(x.get('topic', 'General'), 99))
-        for i, ans in enumerate(answers_list, 1):
-            topic = ans.get('topic', 'General')
-            sec_score = sectional_data.get(topic, {"awarded": 0, "max": 0})
-            
-            # Section Header
-            if topic != current_topic:
-                current_topic = topic
-                transcript_html += f"<div style='margin:10px 0;border-bottom:2px solid #007bff;padding:3px'>"
-                transcript_html += f"<b style='color:#007bff'>{current_topic}</b> ({sec_score['awarded']}/{sec_score['max']})</div>"
-            
-            q_text = ans.get('question_text', f'Q-{ans["question_id"]}')
-            ans_text = ans.get('answer_text', '-')
-            correct_ans = ans.get('correct_answer', '')
-            awarded = ans.get('marks_awarded', 0)
-            max_marks = ans.get('max_marks', 1)
-            
-            # Color for marks
-            if awarded == "Manual":
-                color = "orange"
-            elif str(awarded) == str(max_marks):
-                color = "green"
-            else:
-                color = "red"
-            
-            # Question Card with border
-            transcript_html += f"<div style='margin:5px 0;padding:8px;border:1px solid #ddd'>"
-            transcript_html += f"<b>Q{i}</b> <span style='color:{color}'>[{awarded}/{max_marks}]</span><br>"
-            transcript_html += f"{q_text}<br>"
-            transcript_html += f"<b>Ans:</b> {ans_text}"
-            # Show correct answer if wrong
-            if str(awarded) != str(max_marks) and awarded != "Manual":
-                transcript_html += f"<br><span style='color:#007bff'><b>Correct:</b> {correct_ans}</span>"
-            
-            transcript_html += "</div>"
-    else:
-        transcript_html += "<p>No answers recorded.</p>"
-    
-    # Safety check: Zoho Rich Text has 32000 char limit
     ZOHO_CHAR_LIMIT = 32000
-    print(f"📊 Transcript length: {len(transcript_html)} chars (limit: {ZOHO_CHAR_LIMIT})", flush=True)
-    
-    if len(transcript_html) > ZOHO_CHAR_LIMIT:
-        transcript_html = transcript_html[:ZOHO_CHAR_LIMIT] + "...</div><p><b>⚠️ Transcript truncated due to length.</b></p>"
-        print(f"⚠️ Transcript exceeded limit! Truncated to {ZOHO_CHAR_LIMIT} chars.", flush=True)
+    if transcript_html:
+        print(f"📊 Transcript length: {len(transcript_html)} chars (limit: {ZOHO_CHAR_LIMIT})", flush=True)
+        if len(transcript_html) > ZOHO_CHAR_LIMIT:
+            transcript_html = transcript_html[:ZOHO_CHAR_LIMIT] + "...</div><p><b>⚠️ Transcript truncated due to length.</b></p>"
+            print(f"⚠️ Transcript exceeded limit! Truncated to {ZOHO_CHAR_LIMIT} chars.", flush=True)
+    else:
+        transcript_html = "<p>No answers recorded.</p>"
 
     # --- 2. SEND TO ZOHO ---
     url = f"{BASE_URL}/report/All_Candidate_Assessments/{zoho_id}"
     
     payload_data = {
         "Test_Status": status,
-        "Total_Score": str(calculated_total),
-        "Max_Possible_Marks": str(filtered_max_marks),
+        "Total_Score": str(calculated_total_auto),
+        "Max_Possible_Marks": str(filtered_max_marks_auto),
         "Proctoring_Violations": violations,
         "Suspicious_Activity": "Yes" if violations > 0 else "No",
         "Token_Status": "Used",
@@ -131,7 +92,10 @@ def update_candidate_summary(zoho_id, mcq_score, status, start_time, scheduled_e
     # Map the dictionary values back to Zoho fields
     for topic, scores in sectional_data.items():
         field_name = f"{topic.replace(' ', '_')}_Score"
-        payload_data[field_name] = f"{scores['awarded']} / {scores['max']}"
+        if scores["manual_max"] > 0:
+            payload_data[field_name] = f"{scores['auto_awarded']}/{scores['auto_max']} (Auto) | {scores['manual_max']} marks pending review"
+        else:
+            payload_data[field_name] = f"{scores['auto_awarded']}/{scores['auto_max']}"
     
     payload = {"data": payload_data}
     

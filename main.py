@@ -495,7 +495,7 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
     # 1. Determine Status
     now_ist = get_ist_time()
     is_timeout = is_time_over(session)
-    session.status = "Submitted" if is_timeout else "Submitted"
+    session.status = "Submitted"
     session.submission_type = "Timer" if is_timeout else "Manual"
 
     if hasattr(session, "submitted_at"):
@@ -505,6 +505,10 @@ def submit_test(data: SubmitRequest, background_tasks: BackgroundTasks, db: Sess
     final_score, answers_list, total_possible = calculate_score(session, db)
     
     session.total_score = final_score
+
+    from services.grading import generate_transcript_html
+    html_string = generate_transcript_html(answers_list)
+    session.transcript_html = html_string
 
     db.commit()
     db.refresh(session)
@@ -534,6 +538,9 @@ def perform_zoho_sync(candidate_id, score, status, start_time, end_time, has_dep
     db = SessionLocal()
     print(f"🔁 Starting Zoho sync for session {session_id}", flush=True)
     try:
+        session_rec = db.query(models.TestSession).filter(models.TestSession.id == session_id).first()
+        html_string = session_rec.transcript_html if session_rec else ""
+        
         success = update_candidate_summary(
             zoho_id=candidate_id, 
             mcq_score=score, 
@@ -543,7 +550,8 @@ def perform_zoho_sync(candidate_id, score, status, start_time, end_time, has_dep
             has_dept_test=has_dept_test,
             total_possible_marks=total_possible,
             violations=violations,
-            answers_list=answers
+            answers_list=answers,
+            transcript_html=html_string
         )
         print(f"✅ Zoho update response: {success}", flush=True)
         
