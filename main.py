@@ -603,13 +603,18 @@ def view_transcript(token: str, db: Session = Depends(get_db)):
     if not session or not session.transcript_html:
         return HTMLResponse("<h1>Transcript not found.</h1>", status_code=404)
     
-    # Format the date safely
-    date_str = session.submitted_at.strftime('%d-%b-%Y %H:%M') if getattr(session, "submitted_at", None) else "N/A"
+    # Format the date safely (Date only)
+    date_str = session.submitted_at.strftime('%d-%b-%Y') if getattr(session, "submitted_at", None) else "N/A"
+    
+    # Format the Test Name to include Departmental info
+    test_display = session.test_name or "Assessment"
+    if getattr(session, "has_department_test", "No") == "Yes":
+        test_display += " + Departmental Test"
     
     header_table = f"""
     <table border='1' cellpadding='6' style='border-collapse:collapse;width:100%;margin-bottom:20px;'>
         <tr><td style="width:25%"><b>Name:</b></td><td>{session.candidate_name}</td></tr>
-        <tr><td><b>Test:</b></td><td>{session.test_name}</td></tr>
+        <tr><td><b>Test:</b></td><td>{test_display}</td></tr>
         <tr><td><b>Total Score:</b></td><td>{session.total_score}</td></tr>
         <tr><td><b>Date:</b></td><td>{date_str}</td></tr>
     </table>
