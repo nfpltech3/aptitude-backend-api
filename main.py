@@ -600,13 +600,25 @@ def trigger_resync():
 @app.get("/admin/view-transcript/{token}", response_class=HTMLResponse)
 def view_transcript(token: str, db: Session = Depends(get_db)):
     session = crud.get_session_by_token(db, token)
-    # Note: Corrected 'full_transcript_html' to the actual column name 'transcript_html'
     if not session or not session.transcript_html:
         return HTMLResponse("<h1>Transcript not found.</h1>", status_code=404)
+    
+    # Format the date safely
+    date_str = session.submitted_at.strftime('%d-%b-%Y %H:%M') if getattr(session, "submitted_at", None) else "N/A"
+    
+    header_table = f"""
+    <table border='1' cellpadding='6' style='border-collapse:collapse;width:100%;margin-bottom:20px;'>
+        <tr><td style="width:25%"><b>Name:</b></td><td>{session.candidate_name}</td></tr>
+        <tr><td><b>Test:</b></td><td>{session.test_name}</td></tr>
+        <tr><td><b>Total Score:</b></td><td>{session.total_score}</td></tr>
+        <tr><td><b>Date:</b></td><td>{date_str}</td></tr>
+    </table>
+    """
     
     return HTMLResponse(content=f"""
     <html>
     <body style='font-family:Arial;padding:20px;max-width:860px;margin:auto'>
+        {header_table}
         {session.transcript_html}
     </body>
     </html>
