@@ -596,3 +596,18 @@ def trigger_resync():
     from resync_tool import run_resync
     run_resync() # Triggers the logic
     return {"status": "Resync triggered. Check Render logs for details."}
+
+@app.get("/admin/view-transcript/{token}", response_class=HTMLResponse)
+def view_transcript(token: str, db: Session = Depends(get_db)):
+    session = crud.get_session_by_token(db, token)
+    # Note: Corrected 'full_transcript_html' to the actual column name 'transcript_html'
+    if not session or not session.transcript_html:
+        return HTMLResponse("<h1>Transcript not found.</h1>", status_code=404)
+    
+    return HTMLResponse(content=f"""
+    <html>
+    <body style='font-family:Arial;padding:20px;max-width:860px;margin:auto'>
+        {session.transcript_html}
+    </body>
+    </html>
+    """)
