@@ -601,9 +601,10 @@ def trigger_resync():
 
 @app.get("/admin/view-transcript/{token}", response_class=HTMLResponse)
 def view_transcript(token: str, db: Session = Depends(get_db)):
+    token = token.strip() # Safety first: eliminates any accidental white spaces
     session = crud.get_session_by_token(db, token)
     if not session:
-        return HTMLResponse("<h1>Transcript not found.</h1>", status_code=404)
+        return HTMLResponse("<h1>No record found for this Token in Database.</h1>", status_code=404)
     
     rendered_html = session.transcript_html
     if not rendered_html:
