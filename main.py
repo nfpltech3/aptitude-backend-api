@@ -22,6 +22,7 @@ import os, json, random
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+from typing import Optional
 
 from sqlalchemy.dialects.postgresql import insert
 
@@ -64,6 +65,7 @@ class CandidateWebhook(BaseModel):
     test_id: str
     test_name: str
     has_dept_test: str
+    dept_test_name: Optional[str] = None
 
 @app.api_route("/", methods=["GET", "HEAD"])
 def home():
@@ -600,22 +602,52 @@ def trigger_resync():
 @app.get("/admin/view-transcript/{token}", response_class=HTMLResponse)
 def view_transcript(token: str, db: Session = Depends(get_db)):
     session = crud.get_session_by_token(db, token)
-    if not session or not session.transcript_html:
+    if not session:
         return HTMLResponse("<h1>Transcript not found.</h1>", status_code=404)
     
+    rendered_html = session.transcript_html
+    if not rendered_html:
+        # 🏥 SELF-HEALING FALLBACK: Missing transcript for legacy records!
+        try:
+            print(f"🩹 Attempting to self-heal missing transcript for: {session.candidate_name}")
+            from services.grading import calculate_score, generate_transcript_html
+            # 1. Perform grade pass to fetch exact answers context (safe operation)
+            _, answers_list, _ = calculate_score(session, db)
+            # 2. Build formatted HTML string
+            rendered_html = generate_transcript_html(answers_list)
+            
+            # 3. Store back to DB immediately so it loads instantly forever next time!
+            session.transcript_html = rendered_html
+            db.commit()
+        except Exception as e:
+            print(f"❌ Failed to recover legacy transcript: {e}")
+            return HTMLResponse(f"<h1>Error recovering transcript dynamically. Reason: {e}</h1>", status_code=500)
+
     # Format the date safely (Date only)
     date_str = session.submitted_at.strftime('%d-%b-%Y') if getattr(session, "submitted_at", None) else "N/A"
     
     # Format the Test Name to include Departmental info
-    test_display = session.test_name or "Assessment"
+    test_display = session.test_name or "Aptitude Test"
     if getattr(session, "has_department_test", "No") == "Yes":
-        test_display += " + Departmental Test"
+        dept_name = getattr(session, "dept_test_name", None)
+        if dept_name:
+            test_display += f" + {dept_name}"
+        else:
+            test_display += " + Departmental Test"
+            
+    # Calculate total possible marks dynamically from the existing JSON cache (no DB changes needed)
+    total_possible = 0
+    if session.grading_cache:
+        for q_id, q_data in session.grading_cache.items():
+            total_possible += int(q_data.get("max_marks", 1))
+            
+    score_display = f"{session.total_score} / {total_possible}" if total_possible > 0 else str(session.total_score)
     
     header_table = f"""
     <table border='1' cellpadding='6' style='border-collapse:collapse;width:100%;margin-bottom:20px;'>
         <tr><td style="width:25%"><b>Name:</b></td><td>{session.candidate_name}</td></tr>
         <tr><td><b>Test:</b></td><td>{test_display}</td></tr>
-        <tr><td><b>Total Score:</b></td><td>{session.total_score}</td></tr>
+        <tr><td><b>Total Score:</b></td><td>{score_display}</td></tr>
         <tr><td><b>Date:</b></td><td>{date_str}</td></tr>
     </table>
     """
@@ -624,7 +656,7 @@ def view_transcript(token: str, db: Session = Depends(get_db)):
     <html>
     <body style='font-family:Arial;padding:20px;max-width:860px;margin:auto'>
         {header_table}
-        {session.transcript_html}
+        {rendered_html}
     </body>
     </html>
     """)

@@ -48,7 +48,7 @@ def run_resync(target_zoho_id=None):
                     "topic": q_data.get("topic", "General"),
                     "answer_text": a.answer_text,
                     "correct_answer": correct_val or "N/A",
-                    "marks_awarded": 0, # Note: Scores are pulled from record.total_score
+                    "marks_awarded": a.marks_awarded, # Pulled from actual graded record in DB
                     "max_marks": q_grade_data.get("max_marks", 1)
                 })
 
@@ -65,7 +65,8 @@ def run_resync(target_zoho_id=None):
                 has_dept_test=record.has_department_test,
                 total_possible_marks=100, # Adjust if needed
                 violations=record.violation_count,
-                answers_list=answers_payload
+                answers_list=answers_payload,
+                transcript_html=record.transcript_html
             )
 
             if success:
