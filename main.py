@@ -62,8 +62,8 @@ class CandidateWebhook(BaseModel):
     name: str
     duration: int
     # position: str
-    test_id: str
-    test_name: str
+    test_id: Optional[str] = "0"
+    test_name: Optional[str] = "General Aptitude"
     has_dept_test: str
     dept_test_name: Optional[str] = None
 
