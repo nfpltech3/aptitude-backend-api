@@ -1,5 +1,5 @@
 # models.py
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 from services.timer import get_ist_time
@@ -43,3 +43,6 @@ class Answer(Base):
     saved_at = Column(DateTime, default=get_ist_time)
     marks_awarded = Column(String)
     grading_reason = Column(Text)
+    __table_args__ = (
+        UniqueConstraint('session_id', 'question_id', name='unique_session_question'),
+    )
